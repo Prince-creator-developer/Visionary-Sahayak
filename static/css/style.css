@@ -1,0 +1,42 @@
+/* Visionary Sahayak UI Styles */
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #090d16;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00ffcc;
+}
+
+/* Glassmorphism & Cyber Gradients */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+.active-step {
+    animation: pulseBorder 2.5s infinite;
+}
+
+@keyframes pulseBorder {
+    0%, 100% {
+        border-color: rgba(6, 182, 212, 0.6);
+        box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+    }
+    50% {
+        border-color: rgba(16, 185, 129, 0.6);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+}

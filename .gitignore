@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+visionary_sahayak.db
+recordings/*.webm
+snapshots/*.jpg

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visionary Sahayak - Mobile Camera Streamer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { touch-action: manipulation; }
+        .hud-crosshair {
+            border: 2px dashed rgba(0, 255, 204, 0.4);
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body class="bg-black text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden select-none">
+
+    <!-- Mobile Header -->
+    <header class="p-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-20">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center text-slate-950 font-black text-sm">
+                <i class="fa-solid fa-microchip"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">Visionary Sahayak</h1>
+                <p class="text-[10px] text-slate-400">Mobile Hardware Lens</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <span id="connStatus" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-rose-950 text-rose-400 border border-rose-800">
+                Disconnected
+            </span>
+            <button id="btnTorch" onclick="toggleTorch()" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 text-xs">
+                <i class="fa-solid fa-bolt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Camera Viewport -->
+    <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
+        <video id="mobileVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        <canvas id="captureCanvas" class="hidden"></canvas>
+
+        <!-- AR Inspection Focus Area -->
+        <div class="absolute inset-8 hud-crosshair pointer-events-none flex flex-col justify-between p-3">
+            <div class="flex justify-between text-[10px] font-mono text-cyan-400/80">
+                <span>[AI FOCUS MATRIX]</span>
+                <span id="resolutionInfo">-- x --</span>
+            </div>
+            <div class="text-center">
+                <span class="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] text-cyan-300 font-mono border border-cyan-500/30">
+                    Align Remote / Device in Box
+                </span>
+            </div>
+            <div class="flex justify-between text-[10px] font-mono text-cyan-400/80">
+                <span id="mobileFps">0 FPS</span>
+                <span>LOW LATENCY WS</span>
+            </div>
+        </div>
+
+        <!-- Camera Start Prompt (if permission needed) -->
+        <div id="permissionOverlay" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl mb-4">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+            <h2 class="text-lg font-bold text-slate-100">Access Mobile Camera</h2>
+            <p class="text-xs text-slate-400 mt-2 max-w-xs">
+                To diagnose hardware defects and repair remotes, allow access to your phone's rear camera.
+            </p>
+            <button onclick="startMobileCamera()" class="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/30 flex items-center gap-2">
+                <i class="fa-solid fa-play"></i> Start Camera Stream
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Footer Controls -->
+    <footer class="p-4 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-20 flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+            <button id="btnStreamToggle" onclick="toggleStreaming()" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-2">
+                <i class="fa-solid fa-tower-broadcast text-cyan-400"></i>
+                <span id="streamBtnText">Stream to Dashboard</span>
+            </button>
+
+            <!-- Snap Button -->
+            <button onclick="snapAndSend()" class="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-emerald-400 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shadow-cyan-500/40 active:scale-95 transition">
+                <i class="fa-solid fa-camera"></i>
+            </button>
+        </div>
+        <p class="text-[10px] text-slate-500 text-center font-mono">
+            Powered by Visionary Sahayak | Prince Kumar & Yash Sharma
+        </p>
+    </footer>
+
+    <!-- Mobile Script -->
+    <script src="/static/js/mobile_camera.js"></script>
+</body>
+</html>
