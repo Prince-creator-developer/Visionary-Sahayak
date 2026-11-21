@@ -1,4 +1,4 @@
-// Visionary Sahayak - Mobile Camera Streaming Client
+// Visionary Sahayak - Mobile Camera Streaming & Native Shutter Client
 // Authors: Prince Kumar (1BG24CS133) & Yash Sharma (1BG24CS186)
 
 let socket = null;
@@ -11,40 +11,79 @@ let frameCount = 0;
 let lastFpsTime = Date.now();
 
 const video = document.getElementById('mobileVideo');
+const mobilePreviewImg = document.getElementById('mobilePreviewImg');
 const captureCanvas = document.getElementById('captureCanvas');
 const captureCtx = captureCanvas.getContext('2d');
 const connStatus = document.getElementById('connStatus');
 const permissionOverlay = document.getElementById('permissionOverlay');
 const resolutionInfo = document.getElementById('resolutionInfo');
 const mobileFps = document.getElementById('mobileFps');
-const btnStreamToggle = document.getElementById('btnStreamToggle');
-const streamBtnText = document.getElementById('streamBtnText');
+const hudTag = document.getElementById('hudTag');
 
 function initMobileWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/stream?role=mobile`;
 
-    socket = new WebSocket(wsUrl);
+    try {
+        socket = new WebSocket(wsUrl);
 
-    socket.onopen = () => {
-        console.log("[Mobile WS] Connected to Desktop Server");
-        connStatus.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 animate-pulse";
-        connStatus.innerText = "Connected to Console";
-    };
+        socket.onopen = () => {
+            console.log("[Mobile WS] Connected to Desktop Hub");
+            connStatus.className = "px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800";
+            connStatus.innerText = "Console Synced";
+        };
 
-    socket.onclose = () => {
-        console.warn("[Mobile WS] Disconnected. Reconnecting...");
-        connStatus.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-rose-950 text-rose-400 border border-rose-800";
-        connStatus.innerText = "Reconnecting...";
-        setTimeout(initMobileWebSocket, 2500);
-    };
+        socket.onclose = () => {
+            console.warn("[Mobile WS] Disconnected. Will use HTTP Relay fallback & retry WS.");
+            connStatus.className = "px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800";
+            connStatus.innerText = "HTTP Live Sync";
+            setTimeout(initMobileWebSocket, 3000);
+        };
 
-    socket.onerror = (err) => {
-        console.error("[Mobile WS Error]", err);
-    };
+        socket.onerror = () => {
+            connStatus.className = "px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800";
+            connStatus.innerText = "HTTP Live Sync";
+        };
+    } catch (e) {
+        connStatus.innerText = "HTTP Live Sync";
+    }
 }
 
+// Native Camera Shutter (Works 100% on ANY phone, ANY network, even HTTP!)
+function handleNativeCameraCapture(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    hudTag.innerText = "Transmitting to Dashboard...";
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const base64Data = e.target.result;
+        
+        // Display locally
+        mobilePreviewImg.src = base64Data;
+        mobilePreviewImg.classList.remove('hidden');
+        video.classList.add('hidden');
+        permissionOverlay.classList.add('hidden');
+        resolutionInfo.innerText = "Photo Captured";
+
+        // Transmit frame to Desktop via WS and HTTP
+        sendFrameToHub(base64Data);
+
+        hudTag.innerText = "Sent to Dashboard!";
+        setTimeout(() => {
+            hudTag.innerText = "Align Remote in Center";
+        }, 2500);
+    };
+    reader.readAsDataURL(file);
+}
+
+// Live Video Stream (Requires localhost or HTTPS on Vercel)
 async function startMobileCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Live continuous video requires HTTPS (e.g. deployed on Vercel) or localhost.\nPlease tap 'Take Photo with Phone Camera' to use your phone's native camera immediately!");
+        return;
+    }
+
     try {
         const constraints = {
             video: {
@@ -59,48 +98,34 @@ async function startMobileCamera() {
         video.srcObject = videoStream;
         currentTrack = videoStream.getVideoTracks()[0];
 
+        mobilePreviewImg.classList.add('hidden');
+        video.classList.remove('hidden');
         permissionOverlay.classList.add('hidden');
 
         video.onloadedmetadata = () => {
             resolutionInfo.innerText = `${video.videoWidth} x ${video.videoHeight}`;
             captureCanvas.width = 640;
             captureCanvas.height = Math.round((video.videoHeight / video.videoWidth) * 640);
-            // Automatically start streaming once camera opens
-            startStreamingFrames();
+            startContinuousStreaming();
         };
 
     } catch (err) {
-        alert("Camera error: " + err.message + "\nPlease allow camera permissions.");
+        console.error("Camera access notice:", err);
+        alert("Camera note: " + err.message + "\nYou can tap 'Take Photo with Phone Camera' to snap photos directly!");
     }
 }
 
-function toggleStreaming() {
-    if (isStreaming) {
-        stopStreamingFrames();
-    } else {
-        startStreamingFrames();
-    }
-}
-
-function startStreamingFrames() {
-    if (!videoStream) {
-        startMobileCamera();
-        return;
-    }
-
+function startContinuousStreaming() {
     isStreaming = true;
-    btnStreamToggle.className = "flex-1 py-3 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500 text-xs font-bold flex items-center justify-center gap-2 shadow-sm animate-pulse";
-    streamBtnText.innerText = "Live Streaming Active";
+    hudTag.innerText = "Streaming to Dashboard";
 
-    // Stream at ~10 FPS for ultra-smooth responsiveness without bandwidth choke
     streamInterval = setInterval(() => {
-        if (!isStreaming || !socket || socket.readyState !== WebSocket.OPEN) return;
+        if (!isStreaming || !videoStream) return;
 
         captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
         const frameData = captureCanvas.toDataURL('image/jpeg', 0.65);
-        socket.send(frameData);
+        sendFrameToHub(frameData);
 
-        // FPS calculation
         frameCount++;
         const now = Date.now();
         if (now - lastFpsTime >= 1000) {
@@ -108,34 +133,35 @@ function startStreamingFrames() {
             frameCount = 0;
             lastFpsTime = now;
         }
-    }, 100);
+    }, 120);
 }
 
-function stopStreamingFrames() {
-    isStreaming = false;
-    clearInterval(streamInterval);
-    btnStreamToggle.className = "flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-2";
-    streamBtnText.innerText = "Stream to Dashboard";
-    mobileFps.innerText = "0 FPS";
+// Unified Frame Transmitter (WebSockets with HTTP Post Fallback)
+function sendFrameToHub(frameBase64) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(frameBase64);
+    } else {
+        // Fallback over HTTP API (Vercel Serverless Compatible)
+        fetch('/api/stream/frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frame: frameBase64 })
+        }).catch(e => console.warn("HTTP Frame sync error", e));
+    }
 }
 
 function snapAndSend() {
-    if (!videoStream || !socket || socket.readyState !== WebSocket.OPEN) {
-        alert("Camera not active or disconnected.");
-        return;
+    if (videoStream) {
+        captureCanvas.width = video.videoWidth || 1280;
+        captureCanvas.height = video.videoHeight || 720;
+        captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+        const snapB64 = captureCanvas.toDataURL('image/jpeg', 0.85);
+        sendFrameToHub(snapB64);
+        hudTag.innerText = "Snapshot Broadcasted!";
+        setTimeout(() => hudTag.innerText = "Align Remote in Center", 2000);
+    } else {
+        document.getElementById('nativeCameraInput').click();
     }
-    // High-res snapshot
-    captureCanvas.width = video.videoWidth || 1280;
-    captureCanvas.height = video.videoHeight || 720;
-    captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-    const snapB64 = captureCanvas.toDataURL('image/jpeg', 0.85);
-
-    // Send immediately over WS
-    socket.send(snapB64);
-
-    // Audio / visual flash effect
-    document.body.classList.add('bg-white');
-    setTimeout(() => document.body.classList.remove('bg-white'), 100);
 }
 
 async function toggleTorch() {
@@ -151,10 +177,10 @@ async function toggleTorch() {
                 "w-8 h-8 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-xs shadow-md shadow-amber-400/50" : 
                 "w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 text-xs";
         } else {
-            alert("Flashlight/Torch is not supported on this browser/camera.");
+            alert("Flashlight/Torch is not available on this browser/lens.");
         }
     } catch (e) {
-        console.warn("Torch toggle not supported", e);
+        console.warn("Torch notice", e);
     }
 }
 

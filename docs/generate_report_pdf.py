@@ -325,7 +325,7 @@ html_content = """<!DOCTYPE html>
         <p>Traditional repair alternatives present significant friction: complex circuit schematics are unintelligible to non-engineers, and certified service centers levy minimum diagnostic charges that exceed the replacement cost of the gadget itself. The global "Right to Repair" movement seeks to empower everyday citizens to troubleshoot and restore hardware safely, thereby curbing electronic waste.</p>
 
         <div class="callout">
-            <strong>The Multimodal GenAI Paradigm:</strong> With recent breakthroughs in Vision-Language Models (VLMs) such as Google Gemini 1.5/2.0 Flash, artificial intelligence can now simultaneously parse spatial visual frames and synthesize step-by-step reasoning.
+            <strong>The Multimodal GenAI Orchestration Paradigm:</strong> Rather than relying on simple one-shot LLM queries, Visionary Sahayak implements a multi-agent AI orchestration pipeline (Perception Agent, Safety Triage Agent, Dynamic Remediation Planner, and Spatial Grounding Agent) powered by Google Gemini Flash Vision and edge heuristics.
         </div>
 
         <p><strong>Visionary Sahayak</strong> is an end-to-end multimodal diagnostic and repair guidance platform designed to bridge this divide. By transforming the user's smartphone into an intelligent diagnostic lens, the platform streams real-time rear-camera feeds over low-latency WebSockets directly to an operator dashboard. The platform visually detects defect mechanisms, annotates issues with high-contrast bounding boxes, synthesizes hands-free audio instructions, and validates physical user actions in real time.</p>

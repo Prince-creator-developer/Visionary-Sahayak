@@ -4,7 +4,11 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "visionary_sahayak.db")
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+if IS_VERCEL:
+    DB_PATH = "/tmp/visionary_sahayak.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "visionary_sahayak.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

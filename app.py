@@ -21,8 +21,14 @@ from database import init_db, save_session, save_media_record, get_all_records, 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-RECORDINGS_DIR = os.path.join(BASE_DIR, "recordings")
-SNAPSHOTS_DIR = os.path.join(BASE_DIR, "snapshots")
+
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+if IS_VERCEL:
+    RECORDINGS_DIR = "/tmp/recordings"
+    SNAPSHOTS_DIR = "/tmp/snapshots"
+else:
+    RECORDINGS_DIR = os.path.join(BASE_DIR, "recordings")
+    SNAPSHOTS_DIR = os.path.join(BASE_DIR, "snapshots")
 
 for d in [STATIC_DIR, TEMPLATES_DIR, RECORDINGS_DIR, SNAPSHOTS_DIR]:
     os.makedirs(d, exist_ok=True)
@@ -122,6 +128,29 @@ class StreamManager:
 
 stream_manager = StreamManager()
 
+# --- HTTP Frame Stream Fallback (Vercel Serverless Compatible) ---
+
+@app.post("/api/stream/frame")
+async def post_stream_frame(payload: Dict[str, Any]):
+    frame_b64 = payload.get("frame")
+    if frame_b64:
+        stream_manager.latest_frame = frame_b64
+        await stream_manager.broadcast_to_desktops({
+            "type": "frame",
+            "data": frame_b64,
+            "timestamp": time.time()
+        })
+        return {"status": "ok", "timestamp": time.time()}
+    return JSONResponse(status_code=400, content={"error": "No frame data"})
+
+@app.get("/api/stream/latest")
+async def get_latest_frame():
+    return {
+        "frame": stream_manager.latest_frame,
+        "mobile_connected": len(stream_manager.active_mobiles) > 0 or stream_manager.latest_frame is not None,
+        "session_id": stream_manager.active_session_id
+    }
+
 # --- Routes ---
 
 @app.get("/", response_class=HTMLResponse)
@@ -189,7 +218,7 @@ async def diagnose_device(payload: Dict[str, Any]):
     if not image_b64:
         return JSONResponse(status_code=400, content={"error": "No image frame provided"})
 
-    result = ai_engine.analyze_frame(image_b64, user_prompt, device_hint)
+    result = ai_engine.orchestrate_pipeline(image_b64, user_prompt, device_hint)
     
     # Save diagnostic session in database
     session_data = {

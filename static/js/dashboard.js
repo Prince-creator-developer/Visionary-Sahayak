@@ -65,9 +65,38 @@ function initWebSocket() {
     };
 
     socket.onclose = () => {
-        console.warn("[WS] Stream disconnected. Reconnecting in 3s...");
+        console.warn("[WS] Stream disconnected. Activating HTTP Polling fallback & retrying WS in 3s...");
+        startHttpPollingFallback();
         setTimeout(initWebSocket, 3000);
     };
+    
+    socket.onerror = () => {
+        startHttpPollingFallback();
+    };
+}
+
+let pollingInterval = null;
+let lastPolledTimestamp = 0;
+
+function startHttpPollingFallback() {
+    if (pollingInterval) return;
+    pollingInterval = setInterval(async () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            return;
+        }
+        try {
+            const resp = await fetch('/api/stream/latest');
+            const data = await resp.json();
+            if (data.frame && currentFeedMode === 'mobile') {
+                updateMobileStatus(data.mobile_connected);
+                renderMobileFrame(data.frame);
+            }
+        } catch (e) {
+            // silent catch
+        }
+    }, 400);
 }
 
 function updateMobileStatus(connected, message = '') {
