@@ -42,6 +42,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Vercel Path Normalizer Middleware
+@app.middleware("http")
+async def vercel_path_normalizer(request: Request, call_next):
+    path = request.scope.get("path", "")
+    if path.startswith("/api/index.py"):
+        new_path = path[len("/api/index.py"):] or "/"
+        request.scope["path"] = new_path
+    elif path.startswith("/api/index"):
+        new_path = path[len("/api/index"):] or "/"
+        request.scope["path"] = new_path
+    return await call_next(request)
+
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -121,6 +133,9 @@ stream_manager = StreamManager()
 # --- Page Views ---
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/api/index.py", response_class=HTMLResponse)
+@app.get("/api/index", response_class=HTMLResponse)
+@app.get("/api", response_class=HTMLResponse)
 async def dashboard_view(request: Request):
     lan_ip = get_lan_ip()
     host_header = request.headers.get("host", f"{lan_ip}:8000")
@@ -140,6 +155,8 @@ async def dashboard_view(request: Request):
     })
 
 @app.get("/mobile", response_class=HTMLResponse)
+@app.get("/api/index.py/mobile", response_class=HTMLResponse)
+@app.get("/api/mobile", response_class=HTMLResponse)
 async def mobile_view(request: Request):
     lan_ip = get_lan_ip()
     return templates.TemplateResponse("mobile.html", {
@@ -148,6 +165,8 @@ async def mobile_view(request: Request):
     })
 
 @app.get("/qr")
+@app.get("/api/index.py/qr")
+@app.get("/api/qr")
 async def generate_qr(request: Request):
     host_header = request.headers.get("host", f"{get_lan_ip()}:8000")
     protocol = "https" if "vercel" in host_header or request.url.scheme == "https" else "http"
