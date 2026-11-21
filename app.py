@@ -167,8 +167,9 @@ async def diagnostic_chat(payload: Dict[str, Any]):
     message = payload.get("message", "")
     history = payload.get("history", [])
     image_b64 = payload.get("image")
+    api_key = payload.get("api_key")
 
-    res = ai_orchestrator.conduct_diagnostic_chat(history, message, image_b64)
+    res = ai_orchestrator.conduct_diagnostic_chat(history, message, image_b64, api_key=api_key)
     return res
 
 @app.post("/api/diagnose")
@@ -176,11 +177,12 @@ async def diagnose_device(payload: Dict[str, Any]):
     image_b64 = payload.get("image")
     problem = payload.get("prompt", "")
     device_hint = payload.get("device_hint", "auto")
+    api_key = payload.get("api_key")
 
     if not image_b64:
         return JSONResponse(status_code=400, content={"error": "No image frame provided for analysis."})
 
-    result = ai_orchestrator.orchestrate_hardware_repair(image_b64, problem, device_hint)
+    result = ai_orchestrator.orchestrate_hardware_repair(image_b64, problem, device_hint, api_key=api_key)
 
     session_data = {
         "id": stream_manager.active_session_id,

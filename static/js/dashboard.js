@@ -211,6 +211,7 @@ async function sendChatMessage() {
     chatInput.value = "";
 
     const frameB64 = getCurrentFrameBase64();
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
 
     try {
         const resp = await fetch('/api/chat', {
@@ -219,7 +220,8 @@ async function sendChatMessage() {
             body: JSON.stringify({
                 message: text,
                 history: chatHistory,
-                image: frameB64
+                image: frameB64,
+                api_key: apiKey
             })
         });
 
@@ -323,6 +325,7 @@ async function triggerAnalysis(customImageB64 = null, customPrompt = "") {
 
     const frameB64 = customImageB64 || getCurrentFrameBase64();
     const problem = customPrompt || chatInput.value || "Universal Hardware Triage";
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
 
     try {
         const resp = await fetch('/api/diagnose', {
@@ -330,7 +333,8 @@ async function triggerAnalysis(customImageB64 = null, customPrompt = "") {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image: frameB64,
-                prompt: problem
+                prompt: problem,
+                api_key: apiKey
             })
         });
 
@@ -643,7 +647,46 @@ function copyMobileUrl() {
     alert("Mobile connection URL copied: " + url);
 }
 
+function toggleApiKeyModal() {
+    const modal = document.getElementById('apiKeyModal');
+    modal.classList.toggle('hidden');
+    const saved = localStorage.getItem('gemini_api_key') || '';
+    document.getElementById('inputApiKey').value = saved;
+}
+
+function saveApiKey() {
+    const key = document.getElementById('inputApiKey').value.trim();
+    if (key) {
+        localStorage.setItem('gemini_api_key', key);
+        updateApiKeyBadge(true);
+        alert("Gemini API Key saved successfully! Live Multimodal Vision is now active.");
+    } else {
+        localStorage.removeItem('gemini_api_key');
+        updateApiKeyBadge(false);
+    }
+    toggleApiKeyModal();
+}
+
+function clearApiKey() {
+    localStorage.removeItem('gemini_api_key');
+    document.getElementById('inputApiKey').value = '';
+    updateApiKeyBadge(false);
+    alert("API Key cleared. Visionary Sahayak will use the Edge Contextual Engine.");
+    toggleApiKeyModal();
+}
+
+function updateApiKeyBadge(hasKey) {
+    const btnText = document.getElementById('apiKeyBtnText');
+    if (btnText) {
+        btnText.innerText = hasKey ? "Gemini Live Active" : "AI API Key";
+        btnText.parentElement.className = hasKey ? 
+            "flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 transition" :
+            "flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition";
+    }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     initWebSocket();
     refreshRecords();
+    updateApiKeyBadge(Boolean(localStorage.getItem('gemini_api_key')));
 });

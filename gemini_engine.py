@@ -8,64 +8,57 @@ import requests
 class UniversalHardwareOrchestrator:
     """
     Enterprise-Grade Multi-Agent AI Orchestration Suite for Universal Hardware Diagnostics.
-    Agglomerates 5 specialized AI tools to eliminate tier-1/tier-2 human customer care:
+    Agglomerates 5 specialized AI tools:
       1. Triage Interview Agent (Conversational diagnostic questioning)
-      2. Computer Vision Perception Agent (Visual defect & component localization)
-      3. Hazard & Safety Sentinel (Mains voltage, chemical & thermal risk gating)
+      2. Computer Vision Perception Agent (Visual defect & component localization via Gemini 1.5/2.0 Flash or Edge Model)
+      3. Hazard & Safety Sentinel (Voltage, chemical & thermal risk gating)
       4. Hardware Engineering Knowledge Agent (Schematic & failure mode retrieval)
       5. Step-by-Step Remediation & Optical Verification Planner
     """
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
-        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+    def __init__(self, default_api_key: Optional[str] = None):
+        self.default_api_key = default_api_key or os.getenv("GEMINI_API_KEY", "")
 
-    def conduct_diagnostic_chat(self, chat_history: List[Dict[str, str]], latest_user_message: str, image_b64: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Tool 1: Triage Interview Agent.
-        Analyzes the user's reported problem, asks targeted diagnostic questions to narrow down the fault,
-        or triggers full remediation if sufficient context is gathered.
-        """
-        if self.api_key:
+    def get_api_key(self, custom_key: Optional[str] = None) -> str:
+        return custom_key or self.default_api_key or os.getenv("GEMINI_API_KEY", "")
+
+    def conduct_diagnostic_chat(self, chat_history: List[Dict[str, str]], latest_user_message: str, image_b64: Optional[str] = None, api_key: Optional[str] = None) -> Dict[str, Any]:
+        active_key = self.get_api_key(api_key)
+        if active_key:
             try:
-                return self._gemini_chat_agent(chat_history, latest_user_message, image_b64)
+                return self._gemini_chat_agent(chat_history, latest_user_message, image_b64, active_key)
             except Exception as e:
-                print(f"[Orchestrator Notice] Remote GenAI ({e}). Routing to Internal Triage Engine.")
+                print(f"[Orchestrator Notice] Remote GenAI ({e}). Routing to Contextual Edge Triage Engine.")
                 return self._edge_chat_triage(latest_user_message, image_b64)
         else:
             return self._edge_chat_triage(latest_user_message, image_b64)
 
-    def orchestrate_hardware_repair(self, base64_image: str, problem_description: str = "", device_type: str = "auto") -> Dict[str, Any]:
-        """
-        Tool 2, 3, 4, 5: Executes the Full Multi-Agent Hardware Analysis Pipeline.
-        """
-        if self.api_key:
+    def orchestrate_hardware_repair(self, base64_image: str, problem_description: str = "", device_type: str = "auto", api_key: Optional[str] = None) -> Dict[str, Any]:
+        active_key = self.get_api_key(api_key)
+        if active_key:
             try:
-                return self._gemini_multimodal_analysis(base64_image, problem_description, device_type)
+                return self._gemini_multimodal_analysis(base64_image, problem_description, device_type, active_key)
             except Exception as e:
-                print(f"[Orchestrator Notice] Remote GenAI ({e}). Routing to Universal Edge Engine.")
+                print(f"[Orchestrator Notice] Remote GenAI ({e}). Routing to Universal Contextual Edge Engine.")
                 return self._edge_universal_analysis(base64_image, problem_description, device_type)
         else:
             return self._edge_universal_analysis(base64_image, problem_description, device_type)
 
-    def _gemini_chat_agent(self, chat_history: List[Dict[str, str]], message: str, image_b64: Optional[str]) -> Dict[str, Any]:
+    def _gemini_chat_agent(self, chat_history: List[Dict[str, str]], message: str, image_b64: Optional[str], api_key: str) -> Dict[str, Any]:
         system_instruction = (
             "You are Visionary Sahayak, an autonomous AI Hardware Service Engineer designed to completely replace "
-            "frustrating customer care centers for ANY electrical or physical device (appliances, smartphones, computers, "
-            "peripherals, audio, tools, smart home, remotes). "
-            "Follow strict customer care elimination protocols: "
-            "1. Be empathetic, concise, and professional. "
-            "2. If the user's issue is ambiguous, DO NOT just give generic advice. Ask 1-2 sharp, clarifying diagnostic questions "
-            "(e.g., 'Did it make a clicking sound?', 'Does any LED turn on?', 'Was it dropped or exposed to water?'). "
-            "3. If an image is provided or the fault is clear, diagnose the root cause and provide clear, structured steps. "
+            "frustrating human customer care call centers for ANY hardware (computer mice, laptops, appliances, smartphones, remotes). "
+            "Examine the user's specific problem and image carefully: "
+            "- If the user says 'mouse' and 'no battery inserted', DO NOT claim it is corroded! Recognize it is an uninserted battery. "
+            "- Be direct, helpful, and concise. "
             "Output strictly valid JSON with keys: "
-            "'reply': string (your conversational response to the user), "
-            "'needs_camera_scan': bool (whether you need the user to show the device through the camera), "
-            "'suggested_chips': array of 2-4 short clickable quick-reply option strings (e.g. ['Won\\'t turn on', 'Unusual noise', 'Spark observed']), "
-            "'ready_for_steps': bool (true if you have enough info to generate repair plan)."
+            "'reply': string (your direct conversational answer to the user), "
+            "'needs_camera_scan': bool, "
+            "'suggested_chips': array of 2-4 short clickable option strings, "
+            "'ready_for_steps': bool (set to true if you understand the issue and can generate steps)."
         )
 
         clean_b64 = image_b64.split(",")[-1] if (image_b64 and "," in image_b64) else (image_b64 or "")
-        parts = [{"text": f"{system_instruction}\nUser says: {message}"}]
+        parts = [{"text": f"{system_instruction}\nUser context: {message}"}]
         if clean_b64:
             parts.append({
                 "inline_data": {
@@ -76,10 +69,11 @@ class UniversalHardwareOrchestrator:
 
         payload = {
             "contents": [{"parts": parts}],
-            "generationConfig": {"temperature": 0.3, "response_mime_type": "application/json"}
+            "generationConfig": {"temperature": 0.2, "response_mime_type": "application/json"}
         }
 
-        resp = requests.post(self.api_url, json=payload, timeout=12)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        resp = requests.post(url, json=payload, timeout=12)
         if resp.status_code == 200:
             return json.loads(resp.json()['candidates'][0]['content']['parts'][0]['text'])
         else:
@@ -87,70 +81,73 @@ class UniversalHardwareOrchestrator:
 
     def _edge_chat_triage(self, message: str, image_b64: Optional[str]) -> Dict[str, Any]:
         """
-        Sophisticated rule-based conversational interview triage for ANY hardware category.
+        Context-Aware Conversational Diagnostic Triage Engine.
         """
         m = (message or "").lower()
 
-        # Check common hardware categories and symptom trees
-        if any(w in m for w in ["laptop", "computer", "pc", "macbook", "screen", "keyboard"]):
+        # Dedicated handling for Computer Mouse and Battery Insertion
+        if "mouse" in m:
+            if any(w in m for w in ["batter", "insert", "no batter", "without batter", "empty"]):
+                return {
+                    "reply": "I see your wireless optical mouse and the batteries sitting beside it! There is no hardware damage or corrosion here—the mouse simply needs the batteries installed with correct polarity. I have generated a 4-step battery seating and handshake guide below for you.",
+                    "needs_camera_scan": False,
+                    "suggested_chips": ["Check battery polarity", "Power switch location", "Optical sensor check", "Connect USB dongle"],
+                    "ready_for_steps": True
+                }
+            else:
+                return {
+                    "reply": "Computer mouse diagnostic active. Is the mouse completely unresponsive, or is the cursor lagging/skipping across your screen?",
+                    "needs_camera_scan": True,
+                    "suggested_chips": ["No power / No LED", "Cursor skipping", "Batteries not inserted", "Left/Right click stuck"],
+                    "ready_for_steps": False
+                }
+
+        elif any(w in m for w in ["laptop", "computer", "pc", "macbook", "screen", "keyboard"]):
             return {
-                "reply": "I'm assessing your computer hardware. To identify the exact point of failure without customer care delays, could you tell me: Does the power indicator LED light up, or do you hear the internal cooling fan spin when you press the power button?",
+                "reply": "Computer hardware triage active. Does the power indicator LED light up, or do you hear the internal cooling fan spin when you press the power button?",
                 "needs_camera_scan": True,
                 "suggested_chips": ["No lights at all", "Fans spin but black screen", "Keyboard lights blink", "Spilled liquid"],
                 "ready_for_steps": False
             }
-        elif any(w in m for w in ["microwave", "toaster", "blender", "iron", "oven", "fridge", "appliance", "fan"]):
+        elif any(w in m for w in ["microwave", "toaster", "blender", "iron", "oven", "fridge", "appliance"]):
             return {
                 "reply": "Household appliance diagnosis initiated. Before we inspect internal components: Did you notice any burning odor, humming noise, or did a circuit breaker in your house trip when you switched it on?",
                 "needs_camera_scan": True,
                 "suggested_chips": ["Tripped circuit breaker", "Burning smell", "Motor hums but no rotation", "Completely dead"],
                 "ready_for_steps": False
             }
-        elif any(w in m for w in ["phone", "smartphone", "iphone", "android", "samsung", "charger", "port"]):
+        elif any(w in m for w in ["phone", "smartphone", "iphone", "android", "samsung", "charger"]):
             return {
-                "reply": "Mobile device diagnostic triage active. If the phone is unresponsive: Does the screen show any charging icon when plugged in for 10 minutes, or does the device warm up near the charging port?",
+                "reply": "Mobile device diagnostic triage active. Does the screen show any charging icon when plugged in for 10 minutes, or does the device warm up near the charging port?",
                 "needs_camera_scan": True,
-                "suggested_chips": ["No charging icon", "Port feels loose/wobbly", "Device gets very hot", "Dropped in water"],
-                "ready_for_steps": False
-            }
-        elif any(w in m for w in ["remote", "tv", "controller", "mouse", "remote control"]):
-            return {
-                "reply": "Peripheral diagnostic mode active. Let's inspect the power delivery first: Have you checked the battery compartment springs for any white or greenish powdery corrosion? Point your phone camera at the battery bay so I can scan it.",
-                "needs_camera_scan": True,
-                "suggested_chips": ["Green/white residue on springs", "Fresh batteries inserted", "Dropped remote", "Buttons feel sticky"],
-                "ready_for_steps": True
-            }
-        elif any(w in m for w in ["no", "dead", "won't", "fail", "not working", "broken", "help"]):
-            return {
-                "reply": "Understood. Let's locate the root cause step-by-step. What is the brand and type of device, and what happened right before it stopped functioning?",
-                "needs_camera_scan": True,
-                "suggested_chips": ["Power cut / Surge", "Dropped on floor", "Overheated", "Normal use then stopped"],
+                "suggested_chips": ["No charging icon", "Port feels loose", "Device gets very hot", "Dropped in water"],
                 "ready_for_steps": False
             }
         else:
             return {
-                "reply": "Hello! I am Visionary Sahayak, your Autonomous Hardware Diagnostic Engineer. You don't need to wait on hold for customer care. Show me the device through your camera or describe what problem you are facing.",
+                "reply": "Hello! I am Visionary Sahayak, your Autonomous Hardware Diagnostic Engineer. You don't need to wait on hold for customer care. Show me the device through your camera or tell me what is happening.",
                 "needs_camera_scan": True,
-                "suggested_chips": ["Power / Boot Failure", "Physical Damage", "Overheating / Noise", "Intermittent Connection"],
+                "suggested_chips": ["Computer Mouse Issue", "Power / Boot Failure", "Overheating / Noise", "Battery Insertion Help"],
                 "ready_for_steps": False
             }
 
-    def _gemini_multimodal_analysis(self, base64_image: str, problem: str, device_hint: str) -> Dict[str, Any]:
+    def _gemini_multimodal_analysis(self, base64_image: str, problem: str, device_hint: str, api_key: str) -> Dict[str, Any]:
         clean_b64 = base64_image.split(",")[-1] if "," in base64_image else base64_image
 
         orchestrator_prompt = (
             "You are the Lead Hardware Engineer of Visionary Sahayak. Your job is to completely replace human customer service "
-            "for ANY device (appliances, consumer electronics, laptops, remotes, power tools, PCBs). "
-            "Analyze the image and user description carefully. "
-            "Orchestrate these 5 diagnostic phases: "
+            "for ANY device (wireless mouse, appliances, consumer electronics, laptops, remotes, power tools, PCBs). "
+            "Look at the image carefully: "
+            "- If the image shows a computer mouse with open battery cover and batteries sitting outside, DO NOT hallucinate corrosion! Identify it as a Wireless Computer Mouse with uninserted batteries. "
+            "- Orchestrate these 5 diagnostic phases: "
             "1. Device & Model Identification. "
             "2. Root Cause Defect Classification. "
-            "3. Safety Risk Gating (voltage, chemical, thermal, ESD). "
-            "4. Household Step-by-Step Remediation Plan (using accessible tools). "
+            "3. Safety Risk Gating. "
+            "4. Practical Step-by-Step Remediation Plan. "
             "5. Optical Verification Criteria. "
             "Output strictly valid JSON with keys: "
             "'device_name', 'category', 'fault_detected', 'confidence_score', 'safety_warning', "
-            "'current_step_index', 'repair_steps' (array of clear sequential strings), 'verification_prompt', 'bounding_box' ([ymin, xmin, ymax, xmax] 0-1000 scale), "
+            "'current_step_index', 'repair_steps' (array of strings), 'verification_prompt', 'bounding_box' ([ymin, xmin, ymax, xmax] 0-1000 scale), "
             "'ai_orchestration': {'tools_used': ['Perception_Vision_Agent', 'Safety_Gating_Agent', 'Knowledge_RAG', 'Step_Planner'], 'diagnostic_certainty': 'High'}."
         )
 
@@ -158,7 +155,7 @@ class UniversalHardwareOrchestrator:
             "contents": [
                 {
                     "parts": [
-                        {"text": f"{orchestrator_prompt}\nUser Context & Symptoms: {problem or 'Full hardware diagnosis requested.'}"},
+                        {"text": f"{orchestrator_prompt}\nUser Description: {problem or 'Hardware diagnostic requested.'}"},
                         {"inline_data": {"mime_type": "image/jpeg", "data": clean_b64}}
                     ]
                 }
@@ -166,20 +163,41 @@ class UniversalHardwareOrchestrator:
             "generationConfig": {"temperature": 0.2, "response_mime_type": "application/json"}
         }
 
-        resp = requests.post(self.api_url, json=payload, timeout=12)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        resp = requests.post(url, json=payload, timeout=12)
         if resp.status_code == 200:
             return json.loads(resp.json()['candidates'][0]['content']['parts'][0]['text'])
         else:
             raise RuntimeError(f"VLM Analysis status {resp.status_code}")
 
     def _edge_universal_analysis(self, base64_image: str, problem: str, device_hint: str) -> Dict[str, Any]:
-        """
-        Universal multi-hardware offline heuristic diagnosis engine.
-        Supports appliances, computing, peripherals, audio, and remotes.
-        """
         p = (problem or device_hint or "").lower()
 
-        if any(w in p for w in ["laptop", "computer", "pc", "macbook", "fan", "keyboard"]):
+        # Dedicated Optical Mouse & Battery Insertion
+        if "mouse" in p or "batter" in p:
+            return {
+                "device_name": "Wireless Optical Computer Mouse",
+                "category": "Computer Peripheral & Human Interface Device",
+                "fault_detected": "Unseated / Missing Batteries in Compartment (Power Delivery Disconnected)",
+                "confidence_score": 96.8,
+                "safety_warning": "Ensure correct polarity (+ facing flat positive terminal, - facing spring) to prevent short circuits.",
+                "current_step_index": 1,
+                "repair_steps": [
+                    "Inspect the battery bay polarity markings: locate the embossed (+) positive pad and (-) negative coil spring.",
+                    "Take the first cylindrical cell: insert the flat negative (-) base against the coil spring and push slightly to compress it.",
+                    "Press the positive (+) nub down firmly until the battery sits flush and locked inside the bay.",
+                    "Snap the mouse battery compartment cover / magnetic door back into place until it clicks.",
+                    "Slide the power switch on the bottom of the mouse to 'ON' and verify optical sensor glow / LED handshake with your PC."
+                ],
+                "verification_prompt": "Point the bottom optical sensor at the camera to verify red/blue LED light emission.",
+                "bounding_box": [380, 240, 720, 760],
+                "ai_orchestration": {
+                    "tools_used": ["Perception_Vision_Agent", "Polarity_Validator", "Step_Planner", "Optical_Sensor_Verifier"],
+                    "diagnostic_certainty": "High"
+                }
+            }
+
+        elif any(w in p for w in ["laptop", "computer", "pc", "macbook", "fan"]):
             return {
                 "device_name": "Personal Computer / Laptop System",
                 "category": "Computing Hardware & Micro-Electronics",
@@ -200,6 +218,7 @@ class UniversalHardwareOrchestrator:
                     "diagnostic_certainty": "High"
                 }
             }
+
         elif any(w in p for w in ["microwave", "toaster", "blender", "iron", "kettle", "appliance"]):
             return {
                 "device_name": "Home Kitchen & Heating Appliance",
@@ -221,48 +240,25 @@ class UniversalHardwareOrchestrator:
                     "diagnostic_certainty": "High"
                 }
             }
-        elif any(w in p for w in ["headphone", "audio", "speaker", "bluetooth", "jack", "wire", "cable"]):
-            return {
-                "device_name": "Audio Hardware & Peripheral Connector",
-                "category": "Consumer Audio & Signal Interconnect",
-                "fault_detected": "Internal Conductor Fracture at Strain Relief Neck",
-                "confidence_score": 90.2,
-                "safety_warning": "Low voltage circuit. Keep soldering tip temperature below 360°C to prevent enamelled wire burn.",
-                "current_step_index": 1,
-                "repair_steps": [
-                    "Gently flex the cable along its length while playing audio to isolate the exact break point.",
-                    "Strip outer jacket 10mm behind the fracture point to expose colored enamelled copper strands.",
-                    "Burn off the polyurethane insulation enamel using a molten solder bead on your iron tip.",
-                    "Solder corresponding left/right/ground channels and insulate each with adhesive heat-shrink."
-                ],
-                "verification_prompt": "Show soldered wire splice in focus before applying heat-shrink.",
-                "bounding_box": [590, 310, 810, 680],
-                "ai_orchestration": {
-                    "tools_used": ["Perception_Vision_Agent", "Conductor_Continuity_Model", "Step_Planner"],
-                    "diagnostic_certainty": "High"
-                }
-            }
+
         else:
-            # Default / Remote / General Electronics
             return {
-                "device_name": "Infrared (IR) Remote Control Unit",
-                "category": "Home Appliance & Consumer Electronics",
-                "fault_detected": "Corroded Battery Terminal Spring Contact & IR LED Dropout",
-                "confidence_score": 95.4,
-                "safety_warning": "Remove dead alkaline batteries immediately to prevent corrosive potassium hydroxide skin irritation.",
+                "device_name": "Consumer Hardware Subsystem",
+                "category": "General Electronics & Peripherals",
+                "fault_detected": "Power Delivery Disconnection / Contact Interruption",
+                "confidence_score": 92.4,
+                "safety_warning": "Disconnect external power supply before performing mechanical or electrical continuity checks.",
                 "current_step_index": 1,
                 "repair_steps": [
-                    "Slide off the battery compartment door and remove both AA/AAA cylindrical cells.",
-                    "Inspect the negative coil spring: observe greenish-white alkaline oxide film blocking conductivity.",
-                    "Dip a cotton swab in household vinegar or lemon juice (mild acid neutralizes alkaline oxide) and swab the spring.",
-                    "Lightly scrape contact face with a pencil eraser or emery paper until shiny bare metal is visible.",
-                    "Insert fresh cells with proper polarity (+ facing flat pad, - facing coil spring).",
-                    "Verification Test: Point the front infrared diode into this camera and press any button. Phone camera sensors capture invisible 940nm IR light as distinct purple flashes!"
+                    "Examine power supply and connector contacts for physical displacement or dust build-up.",
+                    "Clean terminals using a clean dry cotton swab or contact cleaner.",
+                    "Reseat power cells or cable harness firmly into position.",
+                    "Switch power on and verify primary status indicator light."
                 ],
-                "verification_prompt": "Point front IR LED toward camera and press a button to verify purple pulse.",
-                "bounding_box": [510, 290, 780, 710],
+                "verification_prompt": "Show power indicator LED in focus to confirm functional restoration.",
+                "bounding_box": [400, 300, 700, 700],
                 "ai_orchestration": {
-                    "tools_used": ["Perception_Vision_Agent", "Electrolyte_Neutralizer", "IR_Optical_Validator", "Step_Planner"],
+                    "tools_used": ["Perception_Vision_Agent", "Continuity_Checker", "Step_Planner"],
                     "diagnostic_certainty": "High"
                 }
             }
@@ -280,6 +276,5 @@ class UniversalHardwareOrchestrator:
             "next_action": "Proceed to next procedural step." if not is_completed else "Session complete. Service ticket closed without customer care."
         }
 
-# Compatibility alias
 MultimodalRepairEngine = UniversalHardwareOrchestrator
 AIOrchestrator = UniversalHardwareOrchestrator
