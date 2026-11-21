@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visionary Sahayak - GenAI Multimodal Hardware Repair Platform</title>
+    <title>Visionary Sahayak &mdash; Autonomous AI Hardware Service Suite</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,14 +12,15 @@
             theme: {
                 extend: {
                     colors: {
-                        cyber: {
-                            50: '#ecfeff',
-                            400: '#22d3ee',
-                            500: '#06b6d4',
-                            900: '#083344',
-                            neon: '#00ffcc',
-                            card: '#0f172a',
-                            border: '#1e293b'
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#4f46e5',
+                            600: '#4338ca',
+                            700: '#3730a3',
+                            surface: '#0f172a',
+                            panel: '#1e293b',
+                            border: '#334155'
                         }
                     }
                 }
@@ -29,258 +30,280 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col antialiased selection:bg-indigo-600 selection:text-white">
 
-    <!-- Navbar -->
-    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-cyan-500/20 text-lg">
+    <!-- Top Executive Navigation Bar -->
+    <header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3.5">
+            <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm font-bold text-base">
                 <i class="fa-solid fa-microchip"></i>
             </div>
             <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">Visionary Sahayak</h1>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono font-medium">v2.0 GenAI</span>
+                <div class="flex items-center gap-2.5">
+                    <h1 class="text-base font-bold tracking-tight text-white">Visionary Sahayak</h1>
+                    <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800/80 font-medium">
+                        Autonomous Hardware Engineer
+                    </span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/80 font-medium hidden sm:inline">
+                        <i class="fa-solid fa-check-circle mr-1"></i>Replaces Tier 1/2 Customer Care
+                    </span>
                 </div>
-                <p class="text-xs text-slate-400">Real-Time Mobile Camera AR Hardware Diagnostics & Step-by-Step Repair</p>
+                <p class="text-xs text-slate-400">Multi-Agent AI Diagnostic & Interactive Step-by-Step Hardware Repair Suite</p>
             </div>
         </div>
 
-        <!-- Team & Status Badges -->
+        <!-- Academic Team & Pairing Trigger -->
         <div class="flex items-center gap-4">
-            <div class="hidden md:flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 shadow-inner">
-                <i class="fa-solid fa-users text-cyan-400"></i>
-                <span class="text-slate-300 font-medium">Team:</span>
-                <span class="text-cyan-300 font-semibold">Prince Kumar</span>
+            <div class="hidden lg:flex items-center gap-2 text-xs bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5">
+                <span class="text-slate-400 font-medium">Team:</span>
+                <span class="text-slate-200 font-semibold">Prince Kumar</span>
                 <span class="text-slate-500 font-mono">(1BG24CS133)</span>
                 <span class="text-slate-600">|</span>
-                <span class="text-teal-300 font-semibold">Yash Sharma</span>
+                <span class="text-slate-200 font-semibold">Yash Sharma</span>
                 <span class="text-slate-500 font-mono">(1BG24CS186)</span>
             </div>
 
-            <button onclick="toggleMobileModal()" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/60 transition shadow-sm">
-                <i class="fa-solid fa-mobile-screen-button"></i>
-                <span>Connect Mobile Camera</span>
-                <span id="mobileStatusDot" class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <button onclick="toggleMobileModal()" class="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
+                <i class="fa-solid fa-mobile-screen"></i>
+                <span>Connect Phone Camera</span>
+                <span id="mobileStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
             </button>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1720px] mx-auto w-full">
+    <!-- Main Workspace -->
+    <main class="flex-1 p-6 grid grid-cols-1 xl:grid-cols-12 gap-6 max-w-[1800px] mx-auto w-full">
 
-        <!-- Left Column: Video Live Stream & Recording Controls (7 cols) -->
-        <section class="lg:col-span-7 flex flex-col gap-5">
-            <!-- Camera Feed Card -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative group">
-                <!-- Feed Top Bar -->
-                <div class="px-4 py-3 bg-slate-950/70 border-b border-slate-800 flex items-center justify-between text-xs">
-                    <div class="flex items-center gap-2.5">
-                        <span id="streamBadge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono font-medium">
-                            <span class="w-2 h-2 rounded-full bg-slate-500" id="badgeLight"></span>
-                            <span id="badgeText">No Stream Active</span>
-                        </span>
-                        <span id="fpsCounter" class="text-slate-400 font-mono hidden">0 FPS</span>
+        <!-- Left Column: Optical Hardware Lens, Recording & Gallery (6 Cols) -->
+        <section class="xl:col-span-6 flex flex-col gap-5">
+            <!-- Camera Viewport Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
+                <!-- Viewport Control Bar -->
+                <div class="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                        <span id="badgeLight" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                        <span id="badgeText" class="font-medium text-slate-300">Optical Scanner Inactive</span>
+                        <span id="fpsCounter" class="text-slate-500 font-mono text-[11px] ml-2 hidden">0 FPS</span>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button onclick="switchFeedSource('mobile')" id="btnFeedMobile" class="px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-medium transition hover:bg-cyan-500/30">
-                            <i class="fa-solid fa-mobile-screen mr-1"></i> Mobile Feed
+                        <button onclick="switchFeedSource('mobile')" id="btnFeedMobile" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium transition">
+                            <i class="fa-solid fa-mobile mr-1.5"></i>Mobile Camera
                         </button>
-                        <button onclick="switchFeedSource('webcam')" id="btnFeedWebcam" class="px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium transition">
-                            <i class="fa-solid fa-camera mr-1"></i> PC Webcam
+                        <button onclick="switchFeedSource('webcam')" id="btnFeedWebcam" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+                            <i class="fa-solid fa-camera mr-1.5"></i>Laptop Webcam
                         </button>
-                        <label class="px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium transition cursor-pointer">
-                            <i class="fa-solid fa-upload mr-1"></i> Upload Image
+                        <label class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer">
+                            <i class="fa-solid fa-upload mr-1.5"></i>Upload Photo
                             <input type="file" id="imageUploader" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
                         </label>
                     </div>
                 </div>
 
-                <!-- Video Viewport / Canvas Container -->
+                <!-- Video Viewport -->
                 <div class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
-                    <!-- Live Mobile Stream Canvas -->
                     <canvas id="streamCanvas" class="w-full h-full object-contain"></canvas>
-
-                    <!-- Local PC Webcam Video Element (Hidden by default) -->
                     <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-contain hidden"></video>
-
-                    <!-- Static Image Element (For Uploads) -->
-                    <img id="staticPreview" class="w-full h-full object-contain hidden" alt="Uploaded hardware preview">
-
-                    <!-- Overlay Canvas for AI Bounding Box & Annotations -->
                     <canvas id="overlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
 
-                    <!-- Placeholder when no feed is connected -->
+                    <!-- Initial Standby Overlay -->
                     <div id="noFeedPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-slate-400 p-6 text-center">
-                        <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 text-2xl mb-3 shadow-inner">
-                            <i class="fa-solid fa-mobile-screen-button animate-bounce"></i>
+                        <div class="w-14 h-14 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 text-xl mb-3 shadow-inner">
+                            <i class="fa-solid fa-microscope"></i>
                         </div>
-                        <h3 class="text-base font-semibold text-slate-200">Connect Your Mobile Phone Camera</h3>
+                        <h3 class="text-sm font-semibold text-slate-200">Connect Your Hardware Camera Lens</h3>
                         <p class="text-xs text-slate-400 max-w-sm mt-1">
-                            Scan the QR code with your mobile phone to stream high-resolution live video of the remote control or broken device.
+                            Scan the QR code with your smartphone, switch to laptop webcam, or upload an image to begin multi-agent hardware diagnosis.
                         </p>
-                        <button onclick="toggleMobileModal()" class="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center gap-2">
-                            <i class="fa-solid fa-qrcode"></i> Scan QR Code to Connect
-                        </button>
+                        <div class="flex items-center gap-3 mt-4">
+                            <button onclick="toggleMobileModal()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-xs shadow hover:bg-indigo-500 transition flex items-center gap-2">
+                                <i class="fa-solid fa-qrcode"></i> Scan QR Code
+                            </button>
+                            <button onclick="switchFeedSource('webcam')" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition flex items-center gap-2">
+                                <i class="fa-solid fa-video"></i> Use Laptop Webcam
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Live Recording Indicator Overlay -->
-                    <div id="recIndicator" class="absolute top-4 left-4 bg-rose-600/90 text-white text-xs font-mono font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg backdrop-blur-md hidden animate-pulse">
-                        <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
-                        <span>REC <span id="recTimer">00:00</span></span>
+                    <!-- Recording Indicator Overlay -->
+                    <div id="recIndicator" class="absolute top-4 left-4 bg-rose-600 text-white text-xs font-mono font-bold px-3 py-1 rounded-md flex items-center gap-2 shadow hidden animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-white"></span>
+                        <span>RECORDING <span id="recTimer">00:00</span></span>
                     </div>
                 </div>
 
-                <!-- Live Stream & Recording Action Toolbar -->
-                <div class="p-4 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <!-- Viewport Action Toolbar -->
+                <div class="p-3.5 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
-                        <!-- Record Video Button -->
-                        <button id="btnRecord" onclick="toggleRecording()" class="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-2 transition shadow-sm">
+                        <button id="btnRecord" onclick="toggleRecording()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition">
                             <i class="fa-solid fa-circle text-rose-500"></i>
                             <span id="btnRecordText">Start Recording</span>
                         </button>
 
-                        <!-- Capture Snapshot Button -->
-                        <button onclick="captureSnapshot()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition">
-                            <i class="fa-solid fa-camera text-cyan-400"></i>
+                        <button onclick="captureSnapshot()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition">
+                            <i class="fa-solid fa-camera text-slate-300"></i>
                             <span>Capture Snapshot</span>
                         </button>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <!-- Analyze Device Button -->
-                        <button onclick="triggerAnalysis()" id="btnAnalyze" class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition flex items-center gap-2">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            <span>Diagnose Hardware Defect</span>
-                        </button>
-                    </div>
+                    <button onclick="triggerAnalysis()" id="btnAnalyze" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Run Full Hardware AI Scan</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Media Gallery & Recordings Tab -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
-                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <!-- Media Records & Session History -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md flex flex-col gap-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-film text-cyan-400 text-sm"></i>
-                        <h2 class="text-sm font-bold text-slate-200">Captured Records & Video History</h2>
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-400 text-xs"></i>
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Diagnostic Inspection History</h2>
                     </div>
-                    <button onclick="refreshRecords()" class="text-xs text-slate-400 hover:text-cyan-400 transition flex items-center gap-1 font-mono">
+                    <button onclick="refreshRecords()" class="text-xs text-slate-400 hover:text-indigo-400 transition flex items-center gap-1">
                         <i class="fa-solid fa-rotate-right"></i> Refresh
                     </button>
                 </div>
 
-                <div id="mediaGallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-56 overflow-y-auto pr-1">
-                    <div class="text-xs text-slate-500 col-span-full py-6 text-center">
-                        No snapshots or recordings captured yet. Capture a frame or record live to save history.
+                <div id="mediaGallery" class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-48 overflow-y-auto pr-1">
+                    <div class="text-xs text-slate-500 col-span-full py-4 text-center">
+                        No inspection records stored yet.
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Right Column: GenAI Diagnostics, Step-by-Step Guide & Interactive Verification (5 cols) -->
-        <section class="lg:col-span-5 flex flex-col gap-5">
-            <!-- AI Diagnostic Summary Card -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 relative overflow-hidden">
-                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span>
-                        <h2 class="text-sm font-bold text-slate-200">GenAI Diagnostic Engine</h2>
+        <!-- Right Column: Conversational AI Diagnostic Triage & Multi-Agent Planner (6 Cols) -->
+        <section class="xl:col-span-6 flex flex-col gap-5">
+            <!-- Conversational Diagnostic Interview Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 text-xs">
+                            <i class="fa-solid fa-headset"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-white">Autonomous Diagnostic Specialist</h2>
+                            <p class="text-[11px] text-slate-400">Direct interactive troubleshooting &mdash; No call center queues</p>
+                        </div>
                     </div>
-                    <div id="confidenceBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono">
-                        Confidence: <span id="confidenceVal">--</span>%
+                    <div class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>AI Specialist Online</span>
                     </div>
                 </div>
 
-                <!-- Identified Device Information -->
-                <div class="bg-slate-950/60 border border-slate-800/60 rounded-xl p-3.5 flex flex-col gap-1.5">
-                    <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Identified Hardware</div>
-                    <div id="deviceName" class="text-base font-bold text-cyan-300">TV Remote Control (Awaiting Scan)</div>
-                    <div id="deviceCategory" class="text-xs text-slate-400 font-mono">Category: Consumer Electronics / Peripheral</div>
-                </div>
-
-                <!-- Detected Fault Alert -->
-                <div id="faultCard" class="bg-amber-950/30 border border-amber-800/50 rounded-xl p-3.5 flex items-start gap-3">
-                    <div class="text-amber-400 text-lg mt-0.5">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-xs font-bold text-amber-300">Detected Failure Mechanism</div>
-                        <div id="faultDescription" class="text-xs text-amber-200/90 mt-0.5">
-                            Corroded Negative Battery Terminal Spring & IR Emitter Dropout.
+                <!-- Chat Message Stream -->
+                <div id="chatThread" class="flex flex-col gap-3 min-h-[170px] max-h-[220px] overflow-y-auto pr-1 text-xs">
+                    <!-- Initial AI Diagnostic Greeting -->
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">AI</div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 max-w-[85%] text-slate-200 leading-relaxed">
+                            Hello! I am your Autonomous Hardware Service Specialist. You don't need to call customer care or wait on hold. Tell me: <strong>What device is failing, and what symptoms or strange behaviors are you seeing?</strong>
                         </div>
                     </div>
                 </div>
 
-                <!-- Safety Advisory -->
-                <div id="safetyCard" class="bg-rose-950/20 border border-rose-900/40 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-300/90">
-                    <i class="fa-solid fa-shield-halved text-rose-400 mt-0.5"></i>
-                    <div>
-                        <span class="font-bold">Safety Precaution:</span>
-                        <span id="safetyText">Remove depleted alkaline cells to avoid corrosive potassium hydroxide contact.</span>
+                <!-- Interactive Quick-Reply Option Chips -->
+                <div class="flex flex-col gap-1.5">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Common Diagnostic Symptoms:</span>
+                    <div id="quickChips" class="flex flex-wrap gap-1.5">
+                        <button onclick="sendQuickChip('Device will not power on at all')" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                            ⚡ Won't Power On
+                        </button>
+                        <button onclick="sendQuickChip('Overheating or loud mechanical noise')" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                            🔥 Overheating / Loud Noise
+                        </button>
+                        <button onclick="sendQuickChip('Buttons or controls not responding')" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                            🕹️ Unresponsive Controls
+                        </button>
+                        <button onclick="sendQuickChip('Corrosion or liquid spill observed')" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                            💧 Battery Acid / Liquid
+                        </button>
                     </div>
+                </div>
+
+                <!-- Message Input Box -->
+                <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
+                    <input type="text" id="chatInput" placeholder="Describe your hardware issue (e.g., 'My microwave won't heat' or 'Remote stopped working')..." 
+                           class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                           onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    
+                    <button onclick="startVoiceInput()" id="btnVoiceInput" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition" title="Speak to AI">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
+                    
+                    <button onclick="sendChatMessage()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center gap-1.5">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Step-by-Step Repair Guide & Verification Console -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col flex-1 gap-4">
-                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <!-- Staged AI Orchestration Telemetry & Step-by-Step Remediation Plan -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col flex-1 gap-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-emerald-400"></i>
-                        <h2 class="text-sm font-bold text-slate-200">Interactive Step-by-Step Repair Guide</h2>
+                        <i class="fa-solid fa-list-check text-indigo-400 text-sm"></i>
+                        <h2 class="text-sm font-bold text-white">Aggregated AI Remediation Plan</h2>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button id="btnTTSVoice" onclick="toggleVoiceAudio()" class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition">
-                            <i class="fa-solid fa-volume-high text-cyan-400"></i>
+                        <button id="btnTTSVoice" onclick="toggleVoiceAudio()" class="text-xs px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-volume-high text-indigo-400"></i>
                             <span id="ttsStatus">Voice Active</span>
                         </button>
                     </div>
                 </div>
 
+                <!-- Hardware & Defect Telemetry Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">Target Hardware</span>
+                        <span id="deviceName" class="text-xs font-bold text-indigo-300 mt-0.5 block truncate">Universal Hardware Diagnostics</span>
+                        <span id="deviceCategory" class="text-[11px] text-slate-400 block mt-0.5">Category: Consumer Device / Appliance</span>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">Classified Defect</span>
+                        <span id="faultDescription" class="text-xs font-semibold text-amber-300 mt-0.5 block truncate">Awaiting diagnostic scan</span>
+                        <span id="confidenceText" class="text-[11px] text-emerald-400 block mt-0.5">Confidence: --</span>
+                    </div>
+                </div>
+
+                <!-- Safety Protocol Gating Banner -->
+                <div id="safetyCard" class="bg-amber-950/30 border border-amber-900/60 rounded-lg p-3 flex items-start gap-2.5 text-xs text-amber-200">
+                    <i class="fa-solid fa-shield-halved text-amber-400 mt-0.5"></i>
+                    <div>
+                        <span class="font-bold">Safety Protocol:</span>
+                        <span id="safetyText">Always disconnect power from mains and discharge capacitors before physical inspection.</span>
+                    </div>
+                </div>
+
                 <!-- Progress Bar -->
-                <div class="flex flex-col gap-1.5">
-                    <div class="flex justify-between text-xs font-mono text-slate-400">
-                        <span>Repair Progress</span>
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                        <span>Resolution Progress</span>
                         <span id="progressPercent">0%</span>
                     </div>
-                    <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                        <div id="progressBar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 w-0 transition-all duration-500"></div>
+                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div id="progressBar" class="h-full bg-indigo-600 w-0 transition-all duration-300"></div>
                     </div>
                 </div>
 
-                <!-- Steps Container List -->
-                <div id="stepsList" class="flex flex-col gap-2.5 max-h-80 overflow-y-auto pr-1">
-                    <!-- Default initial steps for Remote Repair Demo -->
-                    <div class="step-item active-step p-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/20 flex items-start gap-3">
-                        <span class="step-num w-6 h-6 rounded-full bg-cyan-500 text-slate-950 text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                        <div class="flex-1">
-                            <p class="text-xs font-semibold text-slate-200">Slide off battery door and remove cylindrical cells.</p>
-                            <span class="text-[11px] text-slate-400 mt-0.5 block">Expose the battery compartment springs for optical inspection.</span>
-                        </div>
-                    </div>
-                    <div class="step-item p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 flex items-start gap-3 opacity-60">
-                        <span class="step-num w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                        <div class="flex-1">
-                            <p class="text-xs font-semibold text-slate-300">Clean oxidized negative coil spring terminal.</p>
-                            <span class="text-[11px] text-slate-500 mt-0.5 block">Swab with vinegar/lemon juice to neutralize alkaline residue.</span>
-                        </div>
-                    </div>
-                    <div class="step-item p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 flex items-start gap-3 opacity-60">
-                        <span class="step-num w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-xs font-bold flex items-center justify-center shrink-0">3</span>
-                        <div class="flex-1">
-                            <p class="text-xs font-semibold text-slate-300">Verify IR Emitter flash with phone camera sensor.</p>
-                            <span class="text-[11px] text-slate-500 mt-0.5 block">Point front LED toward camera and press any button to confirm purple pulse.</span>
-                        </div>
+                <!-- Sequential Action Steps Container -->
+                <div id="stepsList" class="flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+                    <div class="p-3 rounded-lg border border-slate-800 bg-slate-950 text-xs text-slate-400 text-center py-6">
+                        Describe your device issue above or click "Run Full Hardware AI Scan" to generate step-by-step instructions.
                     </div>
                 </div>
 
-                <!-- Verification Action Bar -->
-                <div class="mt-auto pt-3 border-t border-slate-800/80 flex items-center justify-between gap-3">
-                    <button onclick="readCurrentStepAloud()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-volume-high text-cyan-400"></i> Read Step
+                <!-- Step Verification Action Bar -->
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+                    <button onclick="readCurrentStepAloud()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-volume-high text-indigo-400"></i> Read Step
                     </button>
-                    <button onclick="verifyStepWithCamera()" id="btnVerifyStep" class="flex-1 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm">
-                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                    <button onclick="verifyStepWithCamera()" id="btnVerifyStep" class="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
+                        <i class="fa-solid fa-circle-check"></i>
                         <span>Verify Step with Camera</span>
                     </button>
                 </div>
@@ -290,42 +313,41 @@
 
     <!-- Mobile Connection Modal with Dynamic QR Code -->
     <div id="mobileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl flex flex-col items-center gap-4 relative animate-in fade-in zoom-in duration-200">
-            <button onclick="toggleMobileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 text-lg">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center gap-4 relative">
+            <button onclick="toggleMobileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-base">
                 <i class="fa-solid fa-xmark"></i>
             </button>
 
-            <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl shadow-inner">
+            <div class="w-11 h-11 rounded-xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 text-lg">
                 <i class="fa-solid fa-qrcode"></i>
             </div>
 
             <div class="text-center">
-                <h3 class="text-base font-bold text-slate-100">Connect Your Mobile Camera</h3>
-                <p class="text-xs text-slate-400 mt-1 max-w-xs">
-                    Scan this QR code with your smartphone camera. Make sure your phone is connected to the same Wi-Fi network:
+                <h3 class="text-sm font-bold text-white">Pair Mobile Phone Camera</h3>
+                <p class="text-xs text-slate-400 mt-1">
+                    Scan with your phone to use its high-resolution rear lens:
                 </p>
             </div>
 
-            <!-- Dynamic QR Code Image -->
-            <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 shadow-inner">
-                <img src="/qr" alt="Mobile Connect QR Code" class="w-48 h-48 rounded-xl object-contain">
+            <!-- SVG QR Code (Zero Pillow binary dependencies) -->
+            <div class="p-3 bg-white rounded-xl shadow-inner">
+                <img src="/qr" alt="Mobile QR Code" class="w-44 h-44 object-contain">
             </div>
 
-            <!-- Mobile Link & Copy -->
-            <div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-2">
-                <span class="text-xs font-mono text-cyan-300 truncate" id="mobileUrlText">{{ mobile_url }}</span>
-                <button onclick="copyMobileUrl()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition shrink-0">
-                    <i class="fa-solid fa-copy"></i> Copy
+            <div class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                <span class="text-xs font-mono text-indigo-300 truncate" id="mobileUrlText">{{ mobile_url }}</span>
+                <button onclick="copyMobileUrl()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs shrink-0">
+                    <i class="fa-solid fa-copy"></i>
                 </button>
             </div>
 
             <p class="text-[11px] text-slate-500 text-center">
-                Once opened on your phone, click "Start Rear Camera Stream" to broadcast video directly here!
+                Once opened, tap "Start Live Stream" or "Take Photo" to broadcast video directly here.
             </p>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Script Controller -->
     <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

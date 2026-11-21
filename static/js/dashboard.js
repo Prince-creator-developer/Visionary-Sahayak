@@ -1,8 +1,8 @@
-// Visionary Sahayak - Dashboard Controller
+// Visionary Sahayak - Unified Hardware Diagnostic & Autonomous Support Suite
 // Authors: Prince Kumar (1BG24CS133) & Yash Sharma (1BG24CS186)
 
 let socket = null;
-let currentFeedMode = 'mobile'; // 'mobile', 'webcam', or 'upload'
+let currentFeedMode = 'mobile';
 let webcamStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -11,73 +11,72 @@ let recordStartTime = 0;
 let recordTimerInterval = null;
 let voiceEnabled = true;
 
-// Active Diagnosis State
-let currentDiagnosis = {
-    deviceName: "Infrared (IR) Remote Control Unit",
-    category: "Home Appliance & Consumer Electronics",
-    faultDetected: "Corroded Negative Battery Terminal Spring & IR Emitter Dropout",
-    confidence: 94.6,
-    safety: "Remove dead alkaline batteries immediately to prevent corrosive potassium hydroxide skin contact.",
-    steps: [
-        "Slide off the battery compartment door and remove both AA/AAA cylindrical cells.",
-        "Inspect the negative coil spring terminal: observe greenish-white alkaline corrosion.",
-        "Dip a cotton swab in vinegar or lemon juice (neutralizes alkaline oxide) and swab the spring.",
-        "Scrape terminal contact lightly with emery paper or pencil eraser until shiny metal is visible.",
-        "Re-insert fresh batteries with correct polarity (+ facing flat terminal, - facing spring).",
-        "Verification Test: Point the front IR LED emitter into this mobile camera and press the 'Power' button. The phone camera sensor can capture invisible 940nm IR light as distinct purple flashes!"
-    ],
+// Active Chat History for Triage Interview
+let chatHistory = [];
+
+// Current Active Diagnostic State
+let activeDiagnosis = {
+    deviceName: "Universal Hardware Diagnostics",
+    category: "Consumer Device / Appliance",
+    faultDetected: "Awaiting Diagnostic Triage",
+    confidence: 0,
+    safety: "Always disconnect power from mains and discharge capacitors before physical inspection.",
+    steps: [],
     currentStepIndex: 1
 };
 
-// Canvas & Video Elements
+// DOM Handles
 const streamCanvas = document.getElementById('streamCanvas');
 const ctx = streamCanvas.getContext('2d');
 const overlayCanvas = document.getElementById('overlayCanvas');
 const overlayCtx = overlayCanvas.getContext('2d');
 const webcamVideo = document.getElementById('webcamVideo');
-const staticPreview = document.getElementById('staticPreview');
 const noFeedPlaceholder = document.getElementById('noFeedPlaceholder');
+const chatThread = document.getElementById('chatThread');
+const chatInput = document.getElementById('chatInput');
 
-// Initialize WebSockets
+// --- WebSocket & Stream Management ---
 function initWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/stream?role=desktop`;
-    
-    socket = new WebSocket(wsUrl);
 
-    socket.onopen = () => {
-        console.log("[WS] Desktop connected to Visionary Sahayak stream hub");
-    };
+    try {
+        socket = new WebSocket(wsUrl);
 
-    socket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'frame' && currentFeedMode === 'mobile') {
-                renderMobileFrame(data.data);
-            } else if (data.type === 'mobile_status') {
-                updateMobileStatus(data.connected, data.message);
-            } else if (data.type === 'status') {
-                updateMobileStatus(data.mobile_connected);
+        socket.onopen = () => {
+            console.log("[WS] Desktop connected to Visionary Sahayak Hub");
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'frame' && currentFeedMode === 'mobile') {
+                    renderMobileFrame(data.data);
+                } else if (data.type === 'mobile_status') {
+                    updateMobileStatus(data.connected, data.message);
+                } else if (data.type === 'status') {
+                    updateMobileStatus(data.mobile_connected);
+                }
+            } catch (e) {
+                console.error("Frame parse error", e);
             }
-        } catch (e) {
-            console.error("Error processing stream message", e);
-        }
-    };
+        };
 
-    socket.onclose = () => {
-        console.warn("[WS] Stream disconnected. Activating HTTP Polling fallback & retrying WS in 3s...");
+        socket.onclose = () => {
+            console.warn("[WS] WS stream dropped. Starting HTTP Polling fallback...");
+            startHttpPollingFallback();
+            setTimeout(initWebSocket, 3000);
+        };
+
+        socket.onerror = () => {
+            startHttpPollingFallback();
+        };
+    } catch (e) {
         startHttpPollingFallback();
-        setTimeout(initWebSocket, 3000);
-    };
-    
-    socket.onerror = () => {
-        startHttpPollingFallback();
-    };
+    }
 }
 
 let pollingInterval = null;
-let lastPolledTimestamp = 0;
-
 function startHttpPollingFallback() {
     if (pollingInterval) return;
     pollingInterval = setInterval(async () => {
@@ -93,10 +92,8 @@ function startHttpPollingFallback() {
                 updateMobileStatus(data.mobile_connected);
                 renderMobileFrame(data.frame);
             }
-        } catch (e) {
-            // silent catch
-        }
-    }, 400);
+        } catch (e) {}
+    }, 450);
 }
 
 function updateMobileStatus(connected, message = '') {
@@ -105,14 +102,14 @@ function updateMobileStatus(connected, message = '') {
     const badgeText = document.getElementById('badgeText');
 
     if (connected) {
-        dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
-        badgeLight.className = "w-2 h-2 rounded-full bg-emerald-400";
-        badgeText.innerText = "Mobile Phone Camera Active";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        badgeLight.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+        badgeText.innerText = "Mobile Camera Lens Active";
         noFeedPlaceholder.classList.add('hidden');
     } else {
-        dot.className = "w-2 h-2 rounded-full bg-rose-500 animate-pulse";
-        badgeLight.className = "w-2 h-2 rounded-full bg-slate-500";
-        badgeText.innerText = message || "Mobile Camera Disconnected";
+        dot.className = "w-2 h-2 rounded-full bg-slate-400";
+        badgeLight.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+        badgeText.innerText = message || "Optical Scanner Inactive";
         if (currentFeedMode === 'mobile') {
             noFeedPlaceholder.classList.remove('hidden');
         }
@@ -132,16 +129,16 @@ function renderMobileFrame(base64Data) {
     img.src = base64Data;
 }
 
-// Feed Switching
+// Feed Selection
 async function switchFeedSource(source) {
     currentFeedMode = source;
     document.getElementById('btnFeedMobile').className = source === 'mobile' ? 
-        'px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-medium transition' : 
-        'px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium transition';
+        'px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium transition' : 
+        'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition';
     
     document.getElementById('btnFeedWebcam').className = source === 'webcam' ? 
-        'px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-medium transition' : 
-        'px-2.5 py-1 rounded bg-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-medium transition';
+        'px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium transition' : 
+        'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition';
 
     if (source === 'mobile') {
         if (webcamStream) {
@@ -149,19 +146,17 @@ async function switchFeedSource(source) {
             webcamStream = null;
         }
         webcamVideo.classList.add('hidden');
-        staticPreview.classList.add('hidden');
         streamCanvas.classList.remove('hidden');
         document.getElementById('badgeText').innerText = "Mobile Camera Feed";
     } else if (source === 'webcam') {
-        staticPreview.classList.add('hidden');
         streamCanvas.classList.add('hidden');
         noFeedPlaceholder.classList.add('hidden');
         webcamVideo.classList.remove('hidden');
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
             webcamVideo.srcObject = webcamStream;
-            document.getElementById('badgeText').innerText = "PC Webcam Active";
-            document.getElementById('badgeLight').className = "w-2 h-2 rounded-full bg-emerald-400";
+            document.getElementById('badgeText').innerText = "Laptop Webcam Active";
+            document.getElementById('badgeLight').className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
         } catch (err) {
             alert("Could not access PC webcam: " + err.message);
         }
@@ -175,27 +170,26 @@ function handleFileUpload(event) {
     currentFeedMode = 'upload';
     const reader = new FileReader();
     reader.onload = (e) => {
-        staticPreview.src = e.target.result;
-        staticPreview.onload = () => {
-            streamCanvas.width = staticPreview.naturalWidth;
-            streamCanvas.height = staticPreview.naturalHeight;
-            overlayCanvas.width = staticPreview.naturalWidth;
-            overlayCanvas.height = staticPreview.naturalHeight;
-            ctx.drawImage(staticPreview, 0, 0);
-            
-            staticPreview.classList.add('hidden');
+        const img = new Image();
+        img.onload = () => {
+            streamCanvas.width = img.width;
+            streamCanvas.height = img.height;
+            overlayCanvas.width = img.width;
+            overlayCanvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
             webcamVideo.classList.add('hidden');
             noFeedPlaceholder.classList.add('hidden');
             streamCanvas.classList.remove('hidden');
-            
+
             document.getElementById('badgeText').innerText = `Uploaded: ${file.name}`;
             triggerAnalysis(e.target.result);
         };
+        img.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }
 
-// Current Frame Capture Helper
 function getCurrentFrameBase64() {
     if (currentFeedMode === 'webcam' && webcamVideo.srcObject) {
         streamCanvas.width = webcamVideo.videoWidth || 640;
@@ -207,34 +201,146 @@ function getCurrentFrameBase64() {
     }
 }
 
-// GenAI Defect Diagnosis
-async function triggerAnalysis(customImageB64 = null) {
+// --- Conversational Diagnostic Triage (Eliminates Customer Care) ---
+
+async function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    appendChatMessage("user", text);
+    chatInput.value = "";
+
+    const frameB64 = getCurrentFrameBase64();
+
+    try {
+        const resp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: text,
+                history: chatHistory,
+                image: frameB64
+            })
+        });
+
+        const data = await resp.json();
+        appendChatMessage("ai", data.reply);
+
+        if (data.suggested_chips && data.suggested_chips.length > 0) {
+            renderQuickChips(data.suggested_chips);
+        }
+
+        if (data.ready_for_steps) {
+            triggerAnalysis(null, text);
+        }
+
+    } catch (err) {
+        console.error("Chat triage error", err);
+        appendChatMessage("ai", "I've logged your issue. Let me run a direct optical scan on the device view to diagnose the failure.");
+        triggerAnalysis(null, text);
+    }
+}
+
+function sendQuickChip(text) {
+    chatInput.value = text;
+    sendChatMessage();
+}
+
+function appendChatMessage(sender, message) {
+    chatHistory.push({ sender, message });
+    const msgDiv = document.createElement('div');
+    msgDiv.className = "flex items-start gap-2.5 animate-in fade-in duration-200";
+
+    if (sender === 'user') {
+        msgDiv.innerHTML = `
+            <div class="ml-auto bg-indigo-600 text-white rounded-xl p-3 max-w-[85%] leading-relaxed shadow-sm">
+                ${message}
+            </div>
+        `;
+    } else {
+        msgDiv.innerHTML = `
+            <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">AI</div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 max-w-[85%] text-slate-200 leading-relaxed shadow-sm">
+                ${message}
+            </div>
+        `;
+        if (voiceEnabled) {
+            speakText(message);
+        }
+    }
+
+    chatThread.appendChild(msgDiv);
+    chatThread.scrollTop = chatThread.scrollHeight;
+}
+
+function renderQuickChips(chips) {
+    const container = document.getElementById('quickChips');
+    container.innerHTML = '';
+    chips.forEach(chip => {
+        const btn = document.createElement('button');
+        btn.className = "px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition";
+        btn.innerText = chip;
+        btn.onclick = () => sendQuickChip(chip);
+        container.appendChild(btn);
+    });
+}
+
+// Voice Recognition Dictation
+function startVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Speech Recognition is not supported on this browser. Please type in the chat box.");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    const btn = document.getElementById('btnVoiceInput');
+    btn.className = "p-2 rounded-lg bg-rose-600 text-white text-xs border border-rose-500 animate-pulse";
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        chatInput.value = transcript;
+        sendChatMessage();
+    };
+
+    recognition.onend = () => {
+        btn.className = "p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition";
+    };
+
+    recognition.start();
+}
+
+// --- Staged Multi-Agent Hardware Analysis ---
+
+async function triggerAnalysis(customImageB64 = null, customPrompt = "") {
     const btn = document.getElementById('btnAnalyze');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Diagnosing Hardware...`;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing Hardware...`;
     btn.disabled = true;
 
     const frameB64 = customImageB64 || getCurrentFrameBase64();
+    const problem = customPrompt || chatInput.value || "Universal Hardware Triage";
 
     try {
-        const response = await fetch('/api/diagnose', {
+        const resp = await fetch('/api/diagnose', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image: frameB64,
-                prompt: "Identify the hardware device, diagnose defects like battery terminal corrosion or broken springs, and output step-by-step repair guide."
+                prompt: problem
             })
         });
 
-        const data = await response.json();
+        const data = await resp.json();
         applyDiagnosticResults(data);
-        
-        // Auto-save snapshot
-        saveSnapshot(frameB64, `AI Diagnosis: ${data.device_name}`);
+        saveSnapshot(frameB64, `AI Scan: ${data.device_name}`);
 
     } catch (err) {
         console.error("Diagnosis error", err);
-        alert("Failed to run diagnosis: " + err.message);
+        alert("Hardware analysis notice: " + err.message);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -242,38 +348,35 @@ async function triggerAnalysis(customImageB64 = null) {
 }
 
 function applyDiagnosticResults(data) {
-    currentDiagnosis = {
-        deviceName: data.device_name || "Unknown Hardware",
+    activeDiagnosis = {
+        deviceName: data.device_name || "Identified Hardware",
         category: data.category || "Consumer Electronics",
-        faultDetected: data.fault_detected || "No critical faults detected",
-        confidence: data.confidence_score || 92.0,
-        safety: data.safety_warning || "Standard ESD precautions advised.",
-        steps: data.repair_steps || ["Inspect device visually.", "Clean connections."],
+        faultDetected: data.fault_detected || "Component Failure Diagnosed",
+        confidence: data.confidence_score || 93.0,
+        safety: data.safety_warning || "Disconnect power from mains before physical intervention.",
+        steps: data.repair_steps || ["Inspect connections.", "Clean contacts."],
         currentStepIndex: 1
     };
 
-    document.getElementById('deviceName').innerText = currentDiagnosis.deviceName;
-    document.getElementById('deviceCategory').innerText = `Category: ${currentDiagnosis.category}`;
-    document.getElementById('faultDescription').innerText = currentDiagnosis.faultDetected;
-    document.getElementById('safetyText').innerText = currentDiagnosis.safety;
-    document.getElementById('confidenceVal').innerText = currentDiagnosis.confidence;
-    document.getElementById('confidenceBadge').classList.remove('hidden');
+    document.getElementById('deviceName').innerText = activeDiagnosis.deviceName;
+    document.getElementById('deviceCategory').innerText = `Category: ${activeDiagnosis.category}`;
+    document.getElementById('faultDescription').innerText = activeDiagnosis.faultDetected;
+    document.getElementById('safetyText').innerText = activeDiagnosis.safety;
+    document.getElementById('confidenceText').innerText = `Confidence: ${activeDiagnosis.confidence}%`;
 
     renderStepsList();
     updateProgress();
 
-    // Draw visual bounding box if provided
     if (data.bounding_box && data.bounding_box.length === 4) {
-        drawBoundingBox(data.bounding_box, currentDiagnosis.faultDetected);
+        drawBoundingBox(data.bounding_box, activeDiagnosis.faultDetected);
     }
 
     if (voiceEnabled) {
-        speakText(`Diagnostic complete. Detected ${currentDiagnosis.deviceName} with ${currentDiagnosis.faultDetected}. Proceeding to Step 1.`);
+        speakText(`Hardware diagnosed as ${activeDiagnosis.deviceName}. Root cause: ${activeDiagnosis.faultDetected}. Proceed to Step 1.`);
     }
 }
 
 function drawBoundingBox(box, label) {
-    // box is [ymin, xmin, ymax, xmax] in 0-1000 scale
     const [ymin, xmin, ymax, xmax] = box;
     const w = overlayCanvas.width;
     const h = overlayCanvas.height;
@@ -284,67 +387,71 @@ function drawBoundingBox(box, label) {
     const boxH = ((ymax - ymin) / 1000) * h;
 
     overlayCtx.clearRect(0, 0, w, h);
-    
-    // Draw box
-    overlayCtx.strokeStyle = "#00ffcc";
-    overlayCtx.lineWidth = 3;
+
+    // Clean Indigo/Sky Engineering Box
+    overlayCtx.strokeStyle = "#38bdf8";
+    overlayCtx.lineWidth = 2.5;
     overlayCtx.strokeRect(x, y, boxW, boxH);
 
-    // Label tag
-    overlayCtx.fillStyle = "rgba(15, 23, 42, 0.85)";
-    overlayCtx.fillRect(x, Math.max(0, y - 24), boxW, 22);
+    overlayCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+    overlayCtx.fillRect(x, Math.max(0, y - 22), Math.min(boxW + 20, 240), 20);
 
-    overlayCtx.fillStyle = "#00ffcc";
-    overlayCtx.font = "bold 12px monospace";
-    overlayCtx.fillText(label.slice(0, 32), x + 6, Math.max(14, y - 8));
+    overlayCtx.fillStyle = "#ffffff";
+    overlayCtx.font = "bold 11px sans-serif";
+    overlayCtx.fillText(label.slice(0, 30), x + 5, Math.max(14, y - 7));
 }
 
 function renderStepsList() {
     const list = document.getElementById('stepsList');
     list.innerHTML = '';
 
-    currentDiagnosis.steps.forEach((step, idx) => {
+    if (!activeDiagnosis.steps || activeDiagnosis.steps.length === 0) {
+        list.innerHTML = `<div class="p-4 text-center text-xs text-slate-500">Awaiting diagnostic triage.</div>`;
+        return;
+    }
+
+    activeDiagnosis.steps.forEach((step, idx) => {
         const stepNum = idx + 1;
-        const isActive = stepNum === currentDiagnosis.currentStepIndex;
-        const isCompleted = stepNum < currentDiagnosis.currentStepIndex;
+        const isActive = stepNum === activeDiagnosis.currentStepIndex;
+        const isCompleted = stepNum < activeDiagnosis.currentStepIndex;
 
         const item = document.createElement('div');
-        item.className = `step-item p-3.5 rounded-xl border transition flex items-start gap-3 ${
-            isActive ? 'border-cyan-500/50 bg-cyan-950/20 active-step shadow-md shadow-cyan-950/40' :
-            isCompleted ? 'border-emerald-500/30 bg-emerald-950/10 opacity-70' :
-            'border-slate-800 bg-slate-950/40 opacity-50'
+        item.className = `p-3 rounded-lg border transition flex items-start gap-3 ${
+            isActive ? 'border-indigo-500 bg-indigo-950/20 shadow-sm' :
+            isCompleted ? 'border-slate-800 bg-slate-950/40 opacity-70' :
+            'border-slate-800 bg-slate-950/20 opacity-50'
         }`;
 
         item.innerHTML = `
-            <span class="step-num w-6 h-6 rounded-full ${
-                isCompleted ? 'bg-emerald-500 text-slate-950' :
-                isActive ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'
-            } text-xs font-bold flex items-center justify-center shrink-0">
-                ${isCompleted ? '<i class="fa-solid fa-check text-[10px]"></i>' : stepNum}
+            <span class="w-5 h-5 rounded-full ${
+                isCompleted ? 'bg-emerald-600 text-white' :
+                isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+            } text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                ${isCompleted ? '<i class="fa-solid fa-check"></i>' : stepNum}
             </span>
             <div class="flex-1">
                 <p class="text-xs font-semibold ${isActive ? 'text-slate-100' : 'text-slate-300'}">${step}</p>
             </div>
-            ${isActive ? `<button onclick="readCurrentStepAloud()" class="text-cyan-400 hover:text-cyan-200 text-xs p-1" title="Read Step"><i class="fa-solid fa-volume-high"></i></button>` : ''}
+            ${isActive ? `<button onclick="readCurrentStepAloud()" class="text-indigo-400 hover:text-indigo-300 text-xs p-1"><i class="fa-solid fa-volume-high"></i></button>` : ''}
         `;
         list.appendChild(item);
     });
 }
 
 function updateProgress() {
-    const total = currentDiagnosis.steps.length;
-    const completed = currentDiagnosis.currentStepIndex - 1;
+    const total = activeDiagnosis.steps.length || 1;
+    const completed = activeDiagnosis.currentStepIndex - 1;
     const percent = Math.min(100, Math.round((completed / total) * 100));
 
     document.getElementById('progressPercent').innerText = `${percent}%`;
     document.getElementById('progressBar').style.width = `${percent}%`;
 }
 
-// Interactive Verification Loop
+// Step Verification
 async function verifyStepWithCamera() {
     const btn = document.getElementById('btnVerifyStep');
     const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Checking Camera View...`;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying with Camera...`;
     btn.disabled = true;
 
     const frameB64 = getCurrentFrameBase64();
@@ -355,74 +462,64 @@ async function verifyStepWithCamera() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image: frameB64,
-                current_step_index: currentDiagnosis.currentStepIndex,
-                total_steps: currentDiagnosis.steps.length
+                current_step_index: activeDiagnosis.currentStepIndex,
+                total_steps: activeDiagnosis.steps.length
             })
         });
 
-        const result = await resp.json();
-        if (result.verified) {
-            currentDiagnosis.currentStepIndex = result.current_step_index;
+        const res = await resp.json();
+        if (res.verified) {
+            activeDiagnosis.currentStepIndex = res.current_step_index;
             renderStepsList();
             updateProgress();
 
-            if (result.is_completed) {
-                speakText("Verification confirmed! Congratulations, the device repair procedure is complete!");
-                alert("🎉 Device repair verified successfully by Visionary Sahayak!");
+            if (res.is_completed) {
+                speakText("Verification confirmed! Hardware repair successfully completed.");
+                alert("🎉 Device repair validated successfully!");
             } else {
-                const nextStepText = currentDiagnosis.steps[currentDiagnosis.currentStepIndex - 1];
-                speakText(`Step verified! Next: ${nextStepText}`);
+                const nextStep = activeDiagnosis.steps[activeDiagnosis.currentStepIndex - 1];
+                speakText(`Step verified! Next: ${nextStep}`);
             }
         }
-    } catch (err) {
-        console.error("Step verification error", err);
+    } catch (e) {
+        console.error("Step verification error", e);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 }
 
-// Text-to-Speech (TTS) Voice Engine
+// TTS Audio
 function speakText(text) {
     if (!voiceEnabled || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.05;
-    window.speechSynthesis.speak(utterance);
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    window.speechSynthesis.speak(u);
 }
 
 function readCurrentStepAloud() {
-    const stepText = currentDiagnosis.steps[currentDiagnosis.currentStepIndex - 1];
-    if (stepText) {
-        speakText(`Step ${currentDiagnosis.currentStepIndex}: ${stepText}`);
+    const step = activeDiagnosis.steps[activeDiagnosis.currentStepIndex - 1];
+    if (step) {
+        speakText(`Step ${activeDiagnosis.currentStepIndex}: ${step}`);
     }
 }
 
 function toggleVoiceAudio() {
     voiceEnabled = !voiceEnabled;
-    const status = document.getElementById('ttsStatus');
-    status.innerText = voiceEnabled ? "Voice Active" : "Voice Muted";
+    document.getElementById('ttsStatus').innerText = voiceEnabled ? "Voice Active" : "Voice Muted";
 }
 
-// Live Video Recording
+// Video Recording & Snapshots
 function toggleRecording() {
-    if (!isRecording) {
-        startRecording();
-    } else {
-        stopRecording();
-    }
+    if (!isRecording) startRecording();
+    else stopRecording();
 }
 
 function startRecording() {
     recordedChunks = [];
-    let streamToRecord = null;
-
-    if (currentFeedMode === 'webcam' && webcamStream) {
-        streamToRecord = webcamStream;
-    } else {
-        streamToRecord = streamCanvas.captureStream(25);
-    }
+    const streamToRecord = (currentFeedMode === 'webcam' && webcamStream) ? webcamStream : streamCanvas.captureStream(25);
 
     try {
         mediaRecorder = new MediaRecorder(streamToRecord, { mimeType: 'video/webm' });
@@ -430,10 +527,8 @@ function startRecording() {
         mediaRecorder = new MediaRecorder(streamToRecord);
     }
 
-    mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-        }
+    mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
     };
 
     mediaRecorder.onstop = uploadRecording;
@@ -443,7 +538,7 @@ function startRecording() {
     recordStartTime = Date.now();
     document.getElementById('recIndicator').classList.remove('hidden');
     document.getElementById('btnRecordText').innerText = "Stop Recording";
-    document.getElementById('btnRecord').className = "px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border border-rose-500 text-xs font-semibold flex items-center gap-2 transition shadow-lg animate-pulse";
+    document.getElementById('btnRecord').className = "px-3.5 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold flex items-center gap-2 shadow";
 
     recordTimerInterval = setInterval(() => {
         const elapsedSec = Math.floor((Date.now() - recordStartTime) / 1000);
@@ -460,51 +555,40 @@ function stopRecording() {
         clearInterval(recordTimerInterval);
         document.getElementById('recIndicator').classList.add('hidden');
         document.getElementById('btnRecordText').innerText = "Start Recording";
-        document.getElementById('btnRecord').className = "px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-2 transition shadow-sm";
+        document.getElementById('btnRecord').className = "px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition";
     }
 }
 
 async function uploadRecording() {
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     const formData = new FormData();
-    formData.append('video', blob, `recording_${Date.now()}.webm`);
-    formData.append('notes', `Repair inspection of ${currentDiagnosis.deviceName}`);
+    formData.append('video', blob, `session_${Date.now()}.webm`);
+    formData.append('notes', `Inspection of ${activeDiagnosis.deviceName}`);
 
     try {
-        const resp = await fetch('/api/save-recording', {
-            method: 'POST',
-            body: formData
-        });
-        const res = await resp.json();
-        console.log("Recording saved:", res);
+        await fetch('/api/save-recording', { method: 'POST', body: formData });
         refreshRecords();
-    } catch (err) {
-        console.error("Recording upload failed", err);
+    } catch (e) {
+        console.error("Recording upload error", e);
     }
 }
 
-// Snapshot Capture
 async function captureSnapshot() {
     const frameB64 = getCurrentFrameBase64();
-    await saveSnapshot(frameB64, `Manual Snapshot of ${currentDiagnosis.deviceName}`);
+    await saveSnapshot(frameB64, `Snapshot: ${activeDiagnosis.deviceName}`);
 }
 
 async function saveSnapshot(frameB64, notes = "") {
     try {
-        const resp = await fetch('/api/save-snapshot', {
+        await fetch('/api/save-snapshot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: frameB64, notes: notes })
         });
-        const res = await resp.json();
-        console.log("Snapshot stored:", res);
         refreshRecords();
-    } catch (e) {
-        console.error("Save snapshot error", e);
-    }
+    } catch (e) {}
 }
 
-// Records & Gallery Fetch
 async function refreshRecords() {
     try {
         const resp = await fetch('/api/records');
@@ -512,60 +596,54 @@ async function refreshRecords() {
         const gallery = document.getElementById('mediaGallery');
 
         if (!data.records || data.records.length === 0) {
-            gallery.innerHTML = `<div class="text-xs text-slate-500 col-span-full py-6 text-center">No snapshots or recordings captured yet.</div>`;
+            gallery.innerHTML = `<div class="text-xs text-slate-500 col-span-full py-4 text-center">No inspection records stored yet.</div>`;
             return;
         }
 
         gallery.innerHTML = '';
         data.records.forEach(rec => {
             const card = document.createElement('div');
-            card.className = "bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col group relative";
+            card.className = "bg-slate-950 border border-slate-800 rounded-lg overflow-hidden shadow-sm flex flex-col group";
 
             if (rec.media_type === 'snapshot') {
                 card.innerHTML = `
                     <div class="aspect-video bg-black overflow-hidden relative">
-                        <img src="${rec.file_path}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                        <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-cyan-300">PHOTO</span>
+                        <img src="${rec.file_path}" class="w-full h-full object-cover">
+                        <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-mono text-slate-300">PHOTO</span>
                     </div>
-                    <div class="p-2 flex items-center justify-between">
-                        <span class="text-[10px] text-slate-400 truncate max-w-[90px]">${rec.notes || rec.file_name}</span>
-                        <a href="${rec.file_path}" download class="text-cyan-400 hover:text-cyan-300 text-xs"><i class="fa-solid fa-download"></i></a>
+                    <div class="p-1.5 flex items-center justify-between">
+                        <span class="text-[10px] text-slate-400 truncate max-w-[80px]">${rec.notes || rec.file_name}</span>
+                        <a href="${rec.file_path}" download class="text-indigo-400 hover:text-indigo-300 text-xs"><i class="fa-solid fa-download"></i></a>
                     </div>
                 `;
             } else {
                 card.innerHTML = `
                     <div class="aspect-video bg-black overflow-hidden relative flex items-center justify-center">
                         <video src="${rec.file_path}" class="w-full h-full object-cover" controls preload="metadata"></video>
-                        <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-rose-600/80 text-[9px] font-mono text-white">REC</span>
+                        <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-rose-600 text-[8px] font-mono text-white">REC</span>
                     </div>
-                    <div class="p-2 flex items-center justify-between">
-                        <span class="text-[10px] text-slate-400 truncate max-w-[90px]">${rec.notes || rec.file_name}</span>
+                    <div class="p-1.5 flex items-center justify-between">
+                        <span class="text-[10px] text-slate-400 truncate max-w-[80px]">${rec.notes || rec.file_name}</span>
                         <a href="${rec.file_path}" download class="text-rose-400 hover:text-rose-300 text-xs"><i class="fa-solid fa-download"></i></a>
                     </div>
                 `;
             }
             gallery.appendChild(card);
         });
-    } catch (e) {
-        console.error("Failed to load records", e);
-    }
+    } catch (e) {}
 }
 
-// Modal & QR Utilities
 function toggleMobileModal() {
-    const modal = document.getElementById('mobileModal');
-    modal.classList.toggle('hidden');
+    document.getElementById('mobileModal').classList.toggle('hidden');
 }
 
 function copyMobileUrl() {
     const url = document.getElementById('mobileUrlText').innerText;
     navigator.clipboard.writeText(url);
-    alert("Mobile connection URL copied to clipboard: " + url);
+    alert("Mobile connection URL copied: " + url);
 }
 
-// Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
     initWebSocket();
     refreshRecords();
-    renderStepsList();
 });

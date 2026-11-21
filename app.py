@@ -4,17 +4,18 @@ import time
 import uuid
 import base64
 import socket
+import tempfile
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import qrcode
-from PIL import Image
+import qrcode.image.svg
 
-from gemini_engine import MultimodalRepairEngine
+from gemini_engine import UniversalHardwareOrchestrator
 from database import init_db, save_session, save_media_record, get_all_records, get_all_sessions
 
 # Paths
@@ -22,22 +23,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-IS_VERCEL = bool(os.environ.get("VERCEL"))
-if IS_VERCEL:
-    RECORDINGS_DIR = "/tmp/recordings"
-    SNAPSHOTS_DIR = "/tmp/snapshots"
-else:
-    RECORDINGS_DIR = os.path.join(BASE_DIR, "recordings")
-    SNAPSHOTS_DIR = os.path.join(BASE_DIR, "snapshots")
-
-for d in [STATIC_DIR, TEMPLATES_DIR, RECORDINGS_DIR, SNAPSHOTS_DIR]:
-    os.makedirs(d, exist_ok=True)
+# Safe temp directories for media
+MEDIA_DIR = os.path.join(tempfile.gettempdir(), "visionary_media")
+os.makedirs(MEDIA_DIR, exist_ok=True)
 
 # Initialize app
 app = FastAPI(
-    title="Visionary Sahayak - GenAI Multimodal Hardware Repair Platform",
-    version="2.0.0",
-    description="Real-time Mobile Camera Streaming, GenAI Defect Diagnosis, and Interactive Step-by-Step Hardware Repair System"
+    title="Visionary Sahayak - Autonomous Hardware Diagnostic & Repair Suite",
+    version="3.0.0",
+    description="Multi-Agent AI Hardware Service Engineer replacing human customer care for any device"
 )
 
 app.add_middleware(
@@ -48,12 +42,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-app.mount("/recordings", StaticFiles(directory=RECORDINGS_DIR), name="recordings")
-app.mount("/snapshots", StaticFiles(directory=SNAPSHOTS_DIR), name="snapshots")
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
-ai_engine = MultimodalRepairEngine()
+ai_orchestrator = UniversalHardwareOrchestrator()
 
 def get_lan_ip() -> str:
     try:
@@ -65,7 +58,7 @@ def get_lan_ip() -> str:
     except Exception:
         return "127.0.0.1"
 
-# WebSocket Stream Manager
+# In-Memory Stream Hub
 class StreamManager:
     def __init__(self):
         self.active_desktops: List[WebSocket] = []
@@ -76,21 +69,19 @@ class StreamManager:
     async def connect_desktop(self, websocket: WebSocket):
         await websocket.accept()
         self.active_desktops.append(websocket)
-        # Notify desktop of current mobile connection state
         await websocket.send_json({
             "type": "status",
-            "mobile_connected": len(self.active_mobiles) > 0,
+            "mobile_connected": len(self.active_mobiles) > 0 or self.latest_frame is not None,
             "session_id": self.active_session_id
         })
 
     async def connect_mobile(self, websocket: WebSocket):
         await websocket.accept()
         self.active_mobiles.append(websocket)
-        # Notify desktops that mobile camera is connected
         await self.broadcast_to_desktops({
             "type": "mobile_status",
             "connected": True,
-            "message": "Mobile Camera Paired & Active!"
+            "message": "Mobile Camera Lens Paired"
         })
 
     def disconnect_desktop(self, websocket: WebSocket):
@@ -108,7 +99,6 @@ class StreamManager:
 
     async def broadcast_frame_from_mobile(self, frame_b64: str):
         self.latest_frame = frame_b64
-        # Relay to all listening desktops
         for desktop in list(self.active_desktops):
             try:
                 await desktop.send_json({
@@ -128,35 +118,15 @@ class StreamManager:
 
 stream_manager = StreamManager()
 
-# --- HTTP Frame Stream Fallback (Vercel Serverless Compatible) ---
-
-@app.post("/api/stream/frame")
-async def post_stream_frame(payload: Dict[str, Any]):
-    frame_b64 = payload.get("frame")
-    if frame_b64:
-        stream_manager.latest_frame = frame_b64
-        await stream_manager.broadcast_to_desktops({
-            "type": "frame",
-            "data": frame_b64,
-            "timestamp": time.time()
-        })
-        return {"status": "ok", "timestamp": time.time()}
-    return JSONResponse(status_code=400, content={"error": "No frame data"})
-
-@app.get("/api/stream/latest")
-async def get_latest_frame():
-    return {
-        "frame": stream_manager.latest_frame,
-        "mobile_connected": len(stream_manager.active_mobiles) > 0 or stream_manager.latest_frame is not None,
-        "session_id": stream_manager.active_session_id
-    }
-
-# --- Routes ---
+# --- Page Views ---
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_view(request: Request):
     lan_ip = get_lan_ip()
-    mobile_url = f"http://{lan_ip}:8000/mobile"
+    host_header = request.headers.get("host", f"{lan_ip}:8000")
+    protocol = "https" if "vercel" in host_header or request.url.scheme == "https" else "http"
+    mobile_url = f"{protocol}://{host_header}/mobile"
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "lan_ip": lan_ip,
@@ -170,7 +140,7 @@ async def dashboard_view(request: Request):
     })
 
 @app.get("/mobile", response_class=HTMLResponse)
-async def mobile_camera_view(request: Request):
+async def mobile_view(request: Request):
     lan_ip = get_lan_ip()
     return templates.TemplateResponse("mobile.html", {
         "request": request,
@@ -178,49 +148,40 @@ async def mobile_camera_view(request: Request):
     })
 
 @app.get("/qr")
-async def generate_qr():
-    lan_ip = get_lan_ip()
-    mobile_url = f"http://{lan_ip}:8000/mobile"
-    
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=8,
-        border=3,
-    )
-    qr.add_data(mobile_url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="#00ffcc", back_color="#0f172a")
+async def generate_qr(request: Request):
+    host_header = request.headers.get("host", f"{get_lan_ip()}:8000")
+    protocol = "https" if "vercel" in host_header or request.url.scheme == "https" else "http"
+    mobile_url = f"{protocol}://{host_header}/mobile"
+
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(mobile_url, image_factory=factory, box_size=10)
     
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return StreamingResponse(buf, media_type="image/png")
+    img.save(buf)
+    return Response(content=buf.getvalue(), media_type="image/svg+xml")
 
-@app.get("/api/info")
-async def get_sys_info():
-    lan_ip = get_lan_ip()
-    return {
-        "status": "online",
-        "lan_ip": lan_ip,
-        "mobile_url": f"http://{lan_ip}:8000/mobile",
-        "mobile_connected": len(stream_manager.active_mobiles) > 0,
-        "active_desktops": len(stream_manager.active_desktops),
-        "session_id": stream_manager.active_session_id
-    }
+# --- AI Conversational Triage & Diagnostics ---
+
+@app.post("/api/chat")
+async def diagnostic_chat(payload: Dict[str, Any]):
+    message = payload.get("message", "")
+    history = payload.get("history", [])
+    image_b64 = payload.get("image")
+
+    res = ai_orchestrator.conduct_diagnostic_chat(history, message, image_b64)
+    return res
 
 @app.post("/api/diagnose")
 async def diagnose_device(payload: Dict[str, Any]):
     image_b64 = payload.get("image")
-    user_prompt = payload.get("prompt", "")
+    problem = payload.get("prompt", "")
     device_hint = payload.get("device_hint", "auto")
 
     if not image_b64:
-        return JSONResponse(status_code=400, content={"error": "No image frame provided"})
+        return JSONResponse(status_code=400, content={"error": "No image frame provided for analysis."})
 
-    result = ai_engine.orchestrate_pipeline(image_b64, user_prompt, device_hint)
-    
-    # Save diagnostic session in database
+    result = ai_orchestrator.orchestrate_hardware_repair(image_b64, problem, device_hint)
+
     session_data = {
         "id": stream_manager.active_session_id,
         "device_name": result.get("device_name"),
@@ -232,72 +193,101 @@ async def diagnose_device(payload: Dict[str, Any]):
         "completed_steps": 0
     }
     save_session(session_data)
-    
+
     return result
 
 @app.post("/api/verify-step")
 async def verify_step(payload: Dict[str, Any]):
     image_b64 = payload.get("image", "")
     current_step_index = payload.get("current_step_index", 1)
-    total_steps = payload.get("total_steps", 5)
+    total_steps = payload.get("total_steps", 4)
 
-    verification = ai_engine.verify_repair_step(image_b64, current_step_index, total_steps)
+    verification = ai_orchestrator.verify_repair_step(image_b64, current_step_index, total_steps)
     return verification
+
+# --- Frame Streaming & Media ---
+
+@app.post("/api/stream/frame")
+async def post_stream_frame(payload: Dict[str, Any]):
+    frame_b64 = payload.get("frame")
+    if frame_b64:
+        stream_manager.latest_frame = frame_b64
+        await stream_manager.broadcast_to_desktops({
+            "type": "frame",
+            "data": frame_b64,
+            "timestamp": time.time()
+        })
+        return {"status": "ok"}
+    return JSONResponse(status_code=400, content={"error": "No frame data"})
+
+@app.get("/api/stream/latest")
+async def get_latest_frame():
+    return {
+        "frame": stream_manager.latest_frame,
+        "mobile_connected": len(stream_manager.active_mobiles) > 0 or stream_manager.latest_frame is not None,
+        "session_id": stream_manager.active_session_id
+    }
 
 @app.post("/api/save-snapshot")
 async def save_snapshot(payload: Dict[str, Any]):
     image_b64 = payload.get("image", "")
-    notes = payload.get("notes", "Captured from camera stream")
-    
+    notes = payload.get("notes", "Captured Diagnostic Inspection")
+
     if not image_b64:
         return JSONResponse(status_code=400, content={"error": "Missing image"})
 
     clean_b64 = image_b64.split(",")[-1]
     img_data = base64.b64decode(clean_b64)
-    
+
     filename = f"snapshot_{int(time.time())}_{uuid.uuid4().hex[:6]}.jpg"
-    filepath = os.path.join(SNAPSHOTS_DIR, filename)
+    filepath = os.path.join(MEDIA_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(img_data)
-        
+
     save_media_record(
         session_id=stream_manager.active_session_id,
         media_type="snapshot",
-        file_path=f"/snapshots/{filename}",
+        file_path=f"/media/snapshots/{filename}",
         file_name=filename,
         file_size=len(img_data),
         notes=notes
     )
-    
-    return {"status": "success", "file_url": f"/snapshots/{filename}", "filename": filename}
+
+    return {"status": "success", "file_url": f"/media/snapshots/{filename}", "filename": filename}
 
 @app.post("/api/save-recording")
-async def save_recording(video: UploadFile = File(...), notes: str = Form("Live Mobile Video Recording")):
+async def save_recording(video: UploadFile = File(...), notes: str = Form("Live Hardware Session")):
     filename = f"recording_{int(time.time())}_{uuid.uuid4().hex[:6]}.webm"
-    filepath = os.path.join(RECORDINGS_DIR, filename)
-    
+    filepath = os.path.join(MEDIA_DIR, filename)
+
     content = await video.read()
     with open(filepath, "wb") as f:
         f.write(content)
-        
+
     save_media_record(
         session_id=stream_manager.active_session_id,
         media_type="video_recording",
-        file_path=f"/recordings/{filename}",
+        file_path=f"/media/recordings/{filename}",
         file_name=filename,
         file_size=len(content),
         notes=notes
     )
-    
-    return {"status": "success", "file_url": f"/recordings/{filename}", "filename": filename, "size": len(content)}
+
+    return {"status": "success", "file_url": f"/media/recordings/{filename}", "filename": filename}
+
+@app.get("/media/{media_type}/{filename}")
+async def get_media_file(media_type: str, filename: str):
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(MEDIA_DIR, safe_filename)
+    if os.path.exists(filepath):
+        return FileResponse(filepath)
+    return JSONResponse(status_code=404, content={"error": "Media not found"})
 
 @app.get("/api/records")
 async def list_records():
-    records = get_all_records()
-    sessions = get_all_sessions()
-    return {"records": records, "sessions": sessions}
+    return {"records": get_all_records(), "sessions": get_all_sessions()}
 
-# --- WebSockets for Live Real-Time Mobile Streaming ---
+# --- WebSocket Stream ---
 
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
@@ -307,7 +297,6 @@ async def websocket_stream(websocket: WebSocket):
         try:
             while True:
                 data = await websocket.receive_text()
-                # Frame data from mobile
                 await stream_manager.broadcast_frame_from_mobile(data)
         except WebSocketDisconnect:
             await stream_manager.disconnect_mobile(websocket)
@@ -315,19 +304,18 @@ async def websocket_stream(websocket: WebSocket):
         await stream_manager.connect_desktop(websocket)
         try:
             while True:
-                # Keep desktop alive and handle control signals
-                data = await websocket.receive_text()
+                await websocket.receive_text()
         except WebSocketDisconnect:
             stream_manager.disconnect_desktop(websocket)
 
+# Entrypoint for local execution
 if __name__ == "__main__":
     import uvicorn
     init_db()
     lan_ip = get_lan_ip()
     print("=" * 65)
-    print("🚀 Visionary Sahayak - GenAI Multimodal Repair Engine Started!")
-    print(f"💻 Operator Desktop Dashboard:  http://localhost:8000")
-    print(f"📱 Connect Mobile Phone Camera: http://{lan_ip}:8000/mobile")
-    print(f"👥 Authors: Prince Kumar (1BG24CS133) & Yash Sharma (1BG24CS186)")
+    print("🚀 Visionary Sahayak v3.0 - Autonomous Hardware Diagnostic Suite")
+    print(f"💻 Desktop Operator Console: http://localhost:8000")
+    print(f"📱 Mobile Camera Lens:      http://{lan_ip}:8000/mobile")
     print("=" * 65)
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
