@@ -21,7 +21,15 @@ from database import init_db, save_session, save_media_record, get_all_records, 
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+# Find templates directory across local and Vercel serverless environments
+possible_dirs = [
+    os.path.join(BASE_DIR, "templates"),
+    os.path.join(os.getcwd(), "templates"),
+    os.path.join(os.path.dirname(BASE_DIR), "templates"),
+    "/var/task/templates"
+]
+TEMPLATES_DIR = next((d for d in possible_dirs if os.path.exists(d)), os.path.join(BASE_DIR, "templates"))
 
 # Safe temp directories for media
 MEDIA_DIR = os.path.join(tempfile.gettempdir(), "visionary_media")
@@ -59,6 +67,23 @@ if os.path.exists(STATIC_DIR):
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 ai_orchestrator = UniversalHardwareOrchestrator()
+
+def safe_render_template(template_name: str, context: dict) -> HTMLResponse:
+    try:
+        return templates.TemplateResponse(template_name, context)
+    except Exception as err:
+        print(f"[Template Warning] {err}. Falling back to direct filesystem template loader.")
+        for root in [BASE_DIR, os.getcwd(), os.path.dirname(BASE_DIR), "/var/task"]:
+            path = os.path.join(root, "templates", template_name)
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    html = f.read()
+                # Substitute simple string placeholders
+                for k, v in context.items():
+                    if isinstance(v, str):
+                        html = html.replace(f"{{{{ {k} }}}}", v)
+                return HTMLResponse(content=html)
+        return HTMLResponse(content=f"<h3>Error loading template '{template_name}'</h3><p>{err}</p>", status_code=500)
 
 def get_lan_ip() -> str:
     try:
@@ -142,7 +167,7 @@ async def dashboard_view(request: Request):
     protocol = "https" if "vercel" in host_header or request.url.scheme == "https" else "http"
     mobile_url = f"{protocol}://{host_header}/mobile"
 
-    return templates.TemplateResponse("dashboard.html", {
+    return safe_render_template("dashboard.html", {
         "request": request,
         "lan_ip": lan_ip,
         "mobile_url": mobile_url,
@@ -159,7 +184,7 @@ async def dashboard_view(request: Request):
 @app.get("/api/mobile", response_class=HTMLResponse)
 async def mobile_view(request: Request):
     lan_ip = get_lan_ip()
-    return templates.TemplateResponse("mobile.html", {
+    return safe_render_template("mobile.html", {
         "request": request,
         "lan_ip": lan_ip
     })
