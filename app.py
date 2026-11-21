@@ -66,7 +66,9 @@ if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
-ai_orchestrator = UniversalHardwareOrchestrator()
+ai_orchestrator = UniversalHardwareOrchestrator(
+    default_api_key=os.getenv("GEMINI_API_KEY", "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70")
+)
 
 def safe_render_template(template_name: str, context: dict) -> HTMLResponse:
     try:
@@ -247,8 +249,9 @@ async def verify_step(payload: Dict[str, Any]):
     image_b64 = payload.get("image", "")
     current_step_index = payload.get("current_step_index", 1)
     total_steps = payload.get("total_steps", 4)
+    api_key = payload.get("api_key")
 
-    verification = ai_orchestrator.verify_repair_step(image_b64, current_step_index, total_steps)
+    verification = ai_orchestrator.verify_repair_step(image_b64, current_step_index, total_steps, api_key=api_key)
     return verification
 
 # --- Frame Streaming & Media ---

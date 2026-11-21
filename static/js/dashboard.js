@@ -233,7 +233,8 @@ async function sendChatMessage() {
         }
 
         if (data.ready_for_steps) {
-            triggerAnalysis(null, text);
+            const currentFrame = getCurrentFrameBase64();
+            triggerAnalysis(currentFrame, text);
         }
 
     } catch (err) {
@@ -459,6 +460,7 @@ async function verifyStepWithCamera() {
     btn.disabled = true;
 
     const frameB64 = getCurrentFrameBase64();
+    const apiKey = localStorage.getItem('gemini_api_key') || '';
 
     try {
         const resp = await fetch('/api/verify-step', {
@@ -467,7 +469,8 @@ async function verifyStepWithCamera() {
             body: JSON.stringify({
                 image: frameB64,
                 current_step_index: activeDiagnosis.currentStepIndex,
-                total_steps: activeDiagnosis.steps.length
+                total_steps: activeDiagnosis.steps.length,
+                api_key: apiKey
             })
         });
 
@@ -686,7 +689,12 @@ function updateApiKeyBadge(hasKey) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    // Pre-seed the default Gemini API key so users don't need to configure anything
+    const DEFAULT_API_KEY = 'AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70';
+    if (!localStorage.getItem('gemini_api_key')) {
+        localStorage.setItem('gemini_api_key', DEFAULT_API_KEY);
+    }
     initWebSocket();
     refreshRecords();
-    updateApiKeyBadge(Boolean(localStorage.getItem('gemini_api_key')));
+    updateApiKeyBadge(true);
 });

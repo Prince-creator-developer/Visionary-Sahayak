@@ -5,20 +5,29 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
+        "maxLambdaSize": "50mb",
         "includeFiles": [
           "templates/**",
           "static/**",
           "app.py",
           "gemini_engine.py",
-          "database.py"
+          "database.py",
+          "requirements.txt"
         ]
       }
     }
   ],
   "routes": [
     {
+      "src": "/static/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     }
-  ]
+  ],
+  "env": {
+    "GEMINI_API_KEY": "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70"
+  }
 }
