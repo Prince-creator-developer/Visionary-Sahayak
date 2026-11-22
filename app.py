@@ -69,6 +69,9 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 ai_orchestrator = UniversalHardwareOrchestrator(
     default_api_key=os.getenv("GEMINI_API_KEY", "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70")
 )
+# Wire additional free AI keys if provided
+ai_orchestrator.openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+ai_orchestrator.hf_key = os.getenv("HF_API_KEY", "")
 
 def safe_render_template(template_name: str, context: dict) -> HTMLResponse:
     try:
@@ -207,6 +210,23 @@ async def generate_qr(request: Request):
     return Response(content=buf.getvalue(), media_type="image/svg+xml")
 
 # --- AI Conversational Triage & Diagnostics ---
+
+@app.get("/api/status")
+async def ai_status():
+    """Returns which AI engines are active — shown in dashboard."""
+    return {
+        "gemini": bool(ai_orchestrator.default_api_key),
+        "openrouter": bool(ai_orchestrator.openrouter_key),
+        "huggingface": bool(ai_orchestrator.hf_key),
+        "active_agents": [
+            "Gemini 3.8-flash Vision" if ai_orchestrator.default_api_key else None,
+            "OpenRouter Llama-4 Vision" if ai_orchestrator.openrouter_key else None,
+            "HuggingFace BLIP Caption" if ai_orchestrator.hf_key else None,
+            "Universal Edge Engine"  # always active
+        ],
+        "orchestration_pipeline": "Multi-Agent Cascade: Gemini → OpenRouter → HuggingFace → Edge",
+        "version": "3.1.0"
+    }
 
 @app.post("/api/chat")
 async def diagnostic_chat(payload: Dict[str, Any]):

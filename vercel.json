@@ -11,16 +11,19 @@
           "static/**",
           "app.py",
           "gemini_engine.py",
-          "database.py",
-          "requirements.txt"
+          "database.py"
         ]
       }
+    },
+    {
+      "src": "static/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/api/index.py"
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",

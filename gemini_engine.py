@@ -2,25 +2,52 @@ import os
 import json
 import base64
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import requests
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VISIONARY SAHAYAK — MULTI-AGENT AI ORCHESTRATION ENGINE
+# 
+# AI Pipeline (cascading fallbacks — always free):
+#   Agent 1: Gemini 3.8-flash (Google) — primary vision + chat
+#   Agent 2: OpenRouter free models — secondary vision fallback
+#   Agent 3: HuggingFace Inference API — tertiary analysis
+#   Agent 4: Universal Edge Engine — final offline fallback
+#
+# Free API Keys to get (no credit card):
+#   GEMINI_API_KEY    → aistudio.google.com (you already have this)
+#   OPENROUTER_API_KEY → openrouter.ai (free, signup with Google)
+#   HF_API_KEY        → huggingface.co/settings/tokens (free)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+GEMINI_MODEL    = "gemini-3.8-flash"
+OPENROUTER_CHAT = "meta-llama/llama-4-maverick:free"   # OpenRouter free vision model
+OPENROUTER_VLM  = "meta-llama/llama-4-maverick:free"   # Vision capable
+HF_MODEL        = "Salesforce/blip-image-captioning-large"  # Free HuggingFace VQA
 
 class UniversalHardwareOrchestrator:
     """
-    Enterprise-Grade Multi-Agent AI Orchestration Suite for Universal Hardware Diagnostics.
-    Agglomerates 5 specialized AI tools:
-      1. Triage Interview Agent (Conversational diagnostic questioning)
-      2. Computer Vision Perception Agent (Visual defect & component localization via Gemini 1.5 Flash)
-      3. Hazard & Safety Sentinel (Voltage, chemical & thermal risk gating)
-      4. Hardware Engineering Knowledge Agent (Schematic & failure mode retrieval)
-      5. Step-by-Step Remediation & Optical Verification Planner
-    Covers ANY device: computers, phones, appliances, peripherals, tools, AV, networking, power.
+    Enterprise-Grade Multi-Agent AI Orchestration Suite.
+    5 Specialized Agents + 4-Layer AI Cascade:
+      Agent 1 — Triage Interview Agent (conversational diagnostic)
+      Agent 2 — Computer Vision Perception Agent (Gemini multimodal)
+      Agent 3 — Safety Sentinel (voltage/chemical/thermal gating)
+      Agent 4 — Knowledge Engineering Agent (failure mode retrieval)
+      Agent 5 — Step-by-Step Remediation Planner + Optical Verifier
+    Covers: computers, phones, appliances, peripherals, AV, networking, power tools.
     """
     def __init__(self, default_api_key: Optional[str] = None):
-        self.default_api_key = default_api_key or os.getenv("GEMINI_API_KEY", "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70")
+        self.default_api_key      = default_api_key or os.getenv("GEMINI_API_KEY", "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70")
+        self.openrouter_key       = os.getenv("OPENROUTER_API_KEY", "")
+        self.hf_key               = os.getenv("HF_API_KEY", "")
+        self._ai_calls_log: List[str] = []  # tracks which AI was actually used
 
     def get_api_key(self, custom_key: Optional[str] = None) -> str:
         return (custom_key or self.default_api_key or os.getenv("GEMINI_API_KEY", "AIzaSyBry9gxGLW5JHw5D25-OuLVZNiAnMHJj70")).strip()
+    
+    def _log(self, msg: str):
+        self._ai_calls_log.append(msg)
+        print(f"[Orchestrator] {msg}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # PUBLIC API
@@ -34,12 +61,22 @@ class UniversalHardwareOrchestrator:
         api_key: Optional[str] = None
     ) -> Dict[str, Any]:
         active_key = self.get_api_key(api_key)
+        # Layer 1: Gemini (primary)
         if active_key:
             try:
+                self._log("Agent-1 Gemini chat active")
                 return self._gemini_chat_agent(chat_history, latest_user_message, image_b64, active_key)
             except Exception as e:
-                print(f"[Orchestrator] Gemini chat failed ({e}). Routing to Edge Triage Engine.")
-                return self._edge_chat_triage(latest_user_message, image_b64)
+                self._log(f"Gemini chat failed ({e}). Trying OpenRouter Agent-2.")
+        # Layer 2: OpenRouter (free, no CC)
+        if self.openrouter_key:
+            try:
+                self._log("Agent-2 OpenRouter chat active")
+                return self._openrouter_chat_agent(latest_user_message, image_b64, self.openrouter_key)
+            except Exception as e:
+                self._log(f"OpenRouter failed ({e}). Falling to Edge Triage.")
+        # Layer 3: Edge fallback
+        self._log("Agent-3 Edge Triage Engine active")
         return self._edge_chat_triage(latest_user_message, image_b64)
 
     def orchestrate_hardware_repair(
@@ -50,12 +87,38 @@ class UniversalHardwareOrchestrator:
         api_key: Optional[str] = None
     ) -> Dict[str, Any]:
         active_key = self.get_api_key(api_key)
+        # Layer 1: Gemini Vision (primary — best accuracy)
         if active_key:
             try:
-                return self._gemini_multimodal_analysis(base64_image, problem_description, device_type, active_key)
+                self._log("Agent-1 Gemini VLM active")
+                result = self._gemini_multimodal_analysis(base64_image, problem_description, device_type, active_key)
+                result.setdefault("ai_orchestration", {})["pipeline"] = "Gemini-3.8-flash → Safety_Sentinel → Step_Planner"
+                return result
             except Exception as e:
-                print(f"[Orchestrator] Gemini VLM failed ({e}). Routing to Universal Edge Engine.")
-                return self._edge_universal_analysis(base64_image, problem_description, device_type)
+                self._log(f"Gemini VLM failed ({e}). Trying OpenRouter Agent-2.")
+        # Layer 2: OpenRouter Vision (free, no CC)
+        if self.openrouter_key:
+            try:
+                self._log("Agent-2 OpenRouter VLM active")
+                result = self._openrouter_vision_agent(base64_image, problem_description, self.openrouter_key)
+                result.setdefault("ai_orchestration", {})["pipeline"] = "OpenRouter-Llama4 → Safety_Sentinel → Step_Planner"
+                return result
+            except Exception as e:
+                self._log(f"OpenRouter VLM failed ({e}). Trying HuggingFace Agent-3.")
+        # Layer 3: HuggingFace caption + edge analysis
+        if self.hf_key:
+            try:
+                self._log("Agent-3 HuggingFace caption active")
+                caption = self._hf_image_caption(base64_image, self.hf_key)
+                combined_problem = f"{problem_description}. Visual observation: {caption}"
+                result = self._edge_universal_analysis(base64_image, combined_problem, device_type)
+                result["ai_orchestration"]["tools_used"].insert(0, "HuggingFace_BLIP_Caption")
+                result["ai_orchestration"]["pipeline"] = "HF-BLIP → Edge_Analysis → Step_Planner"
+                return result
+            except Exception as e:
+                self._log(f"HuggingFace failed ({e}). Falling to Edge Engine.")
+        # Layer 4: Universal Edge Engine (always works, no internet needed)
+        self._log("Agent-4 Universal Edge Engine active")
         return self._edge_universal_analysis(base64_image, problem_description, device_type)
 
     def verify_repair_step(
@@ -237,6 +300,96 @@ class UniversalHardwareOrchestrator:
                 "next_action": "Proceed to next step." if not is_completed else "Repair complete!"
             }
         raise RuntimeError(f"Gemini verify HTTP {resp.status_code}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # AGENT 2: OPENROUTER (Free, OpenAI-compatible, no credit card)
+    # Get key: https://openrouter.ai → Sign in with Google → API Keys
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _openrouter_chat_agent(self, message: str, image_b64: Optional[str], api_key: str) -> Dict[str, Any]:
+        system_prompt = (
+            "You are Visionary Sahayak, an autonomous AI Hardware Diagnostic Engineer. "
+            "You replace human customer care for ANY hardware device. "
+            "Ask ONE focused diagnostic question per turn. Do NOT mention customer care. "
+            "Respond ONLY as valid JSON: {\"reply\": string, \"needs_camera_scan\": bool, "
+            "\"suggested_chips\": [2-4 strings], \"ready_for_steps\": bool}"
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
+        ]
+        if image_b64:
+            clean = image_b64.split(",")[-1] if "," in image_b64 else image_b64
+            messages[-1]["content"] = [
+                {"type": "text", "text": message},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{clean}"}}
+            ]
+        payload = {
+            "model": OPENROUTER_CHAT,
+            "messages": messages,
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "HTTP-Referer": "https://visionary-sahayak.vercel.app"},
+            json=payload, timeout=15
+        )
+        if resp.status_code == 200:
+            return json.loads(resp.json()["choices"][0]["message"]["content"])
+        raise RuntimeError(f"OpenRouter chat HTTP {resp.status_code}: {resp.text[:200]}")
+
+    def _openrouter_vision_agent(self, base64_image: str, problem: str, api_key: str) -> Dict[str, Any]:
+        clean = base64_image.split(",")[-1] if "," in base64_image else base64_image
+        system_prompt = (
+            "You are the Lead Hardware Engineer of Visionary Sahayak. Analyze the image and diagnose the hardware. "
+            "Output ONLY valid JSON with keys: device_name, category, fault_detected, confidence_score (0-100), "
+            "safety_warning, current_step_index (=1), repair_steps (array of 4-6 strings), "
+            "verification_prompt, bounding_box ([ymin,xmin,ymax,xmax] 0-1000 scale), "
+            "ai_orchestration ({tools_used: [...], diagnostic_certainty: 'High'|'Medium'|'Low'})."
+        )
+        payload = {
+            "model": OPENROUTER_VLM,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"{system_prompt}\n\nUser description: {problem or 'Diagnose this device.'}"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{clean}"}}
+                ]
+            }],
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"}
+        }
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "HTTP-Referer": "https://visionary-sahayak.vercel.app"},
+            json=payload, timeout=20
+        )
+        if resp.status_code == 200:
+            return json.loads(resp.json()["choices"][0]["message"]["content"])
+        raise RuntimeError(f"OpenRouter VLM HTTP {resp.status_code}: {resp.text[:200]}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # AGENT 3: HUGGINGFACE INFERENCE API (Free tier, 1000 req/day)
+    # Get key: https://huggingface.co/settings/tokens → New token (read)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _hf_image_caption(self, base64_image: str, hf_key: str) -> str:
+        """Use HuggingFace BLIP to caption the image — feeds into edge analysis."""
+        clean = base64_image.split(",")[-1] if "," in base64_image else base64_image
+        img_bytes = base64.b64decode(clean)
+        resp = requests.post(
+            f"https://api-inference.huggingface.co/models/{HF_MODEL}",
+            headers={"Authorization": f"Bearer {hf_key}"},
+            data=img_bytes,
+            timeout=15
+        )
+        if resp.status_code == 200:
+            result = resp.json()
+            if isinstance(result, list) and result:
+                return result[0].get("generated_text", "")
+            return str(result)
+        raise RuntimeError(f"HuggingFace HTTP {resp.status_code}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # EDGE FALLBACK ENGINES

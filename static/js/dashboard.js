@@ -697,4 +697,20 @@ window.addEventListener('DOMContentLoaded', () => {
     initWebSocket();
     refreshRecords();
     updateApiKeyBadge(true);
+    // Poll AI engine status
+    fetchAIStatus();
 });
+
+async function fetchAIStatus() {
+    try {
+        const resp = await fetch('/api/status');
+        const data = await resp.json();
+        const agents = (data.active_agents || []).filter(Boolean);
+        console.log('[AI Pipeline]', data.orchestration_pipeline);
+        // Update badge text with active count
+        const badge = document.getElementById('apiKeyBtnText');
+        if (badge && data.gemini) {
+            badge.innerText = `Gemini Live · ${agents.length} AI Agents`;
+        }
+    } catch(e) {}
+}
